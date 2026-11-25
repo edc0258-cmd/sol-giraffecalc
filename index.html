@@ -19,7 +19,7 @@ h1 small{font-family:"Noto Sans KR",sans-serif;font-size:16px;font-weight:500;co
 .top p{color:#c9c4d6;margin:14px 0 0;max-width:46ch}
 main{padding:clamp(28px,5vw,56px) max(5vw,16px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
-a.card[data-need]{display:none}a.card[data-need].ok{display:flex}.lock{display:none;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px;color:var(--mute)}.lock.ok{display:block}.lock b{color:var(--ink)}.lock button{margin-top:12px;font:700 15px "Noto Sans KR",sans-serif;min-height:42px;padding:0 16px;border-radius:10px;border:0;cursor:pointer;background:#5865F2;color:#fff}
+a.card[data-need]{display:none}a.card[data-need].ok{display:flex}.lock{display:none;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px;color:var(--mute)}.lock.ok{display:block}.lock b{color:var(--ink)}.lock .myid{display:inline-flex;align-items:center;gap:10px;margin-top:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 14px}.lock .myid b{font-size:17px;letter-spacing:.02em;font-variant-numeric:tabular-nums}.lock .myid button{margin:0;min-height:34px;padding:0 12px;font-size:14px}.lock button{margin-top:12px;font:700 15px "Noto Sans KR",sans-serif;min-height:42px;padding:0 16px;border-radius:10px;border:0;cursor:pointer;background:#5865F2;color:#fff}
 a.card{display:flex;flex-direction:column;gap:10px;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--c);border-radius:14px;padding:22px 22px 20px;color:inherit;text-decoration:none;transition:transform .15s,box-shadow .15s}
 a.card:hover{transform:translateY(-3px);box-shadow:0 10px 28px #0000001f}
 a.card:focus-visible{outline:3px solid var(--c);outline-offset:3px}
@@ -92,10 +92,11 @@ function draw(){
   cards.forEach(c=>c.classList.toggle('ok',A.can(c.dataset.need)));
   let h='';
   if(i.configured&&!i.user)h='<b>마을 사람이신가요?</b><br>디스코드로 로그인하면 요리 재료 거래소를 쓸 수 있고, 요리사·연금술사는 자기 계산기도 볼 수 있어요.<br><button type="button" id="lk">디스코드로 로그인</button>';
-  else if(i.configured&&!i.member)h='<b>아직 마을 명단에 없어요.</b><br>요리 재료 거래소에 들어가면 내 디스코드 ID를 볼 수 있어요. 그 ID를 운영자에게 보내 명단에 추가해 달라고 해 주세요.';
+  else if(i.configured&&!i.member)h='<b>아직 마을 명단에 없어요.</b><br>아래 디스코드 ID를 운영자에게 보내 명단에 추가해 달라고 해 주세요. 추가된 뒤 새로고침하면 더 많은 기능이 열려요.'+(i.discordId?`<div class="myid"><b>${A.esc(i.discordId)}</b><button type="button" id="cpid" data-v="${A.esc(i.discordId)}">복사</button></div>`:'');
   else if(i.configured&&!i.roles.includes('요리사')&&!i.roles.includes('연금술사')&&!i.admin)h='<b>요리·연금술 계산기</b><br>요리사나 연금술사 권한이 있으면 여기에 계산기가 나와요. 필요하면 운영자에게 요청해 주세요.';
   lock.innerHTML=h;lock.classList.toggle('ok',!!h);
   const b=document.getElementById('lk');if(b)b.onclick=A.login;
+  const c=document.getElementById('cpid');if(c)c.onclick=async()=>{try{await navigator.clipboard.writeText(c.dataset.v);c.textContent='복사됨'}catch(e){c.textContent='복사 실패'}setTimeout(()=>c.textContent='복사',1400)};
 }
 if(window.Auth){Auth.ready.then(draw);Auth.onChange(draw)}
 }
