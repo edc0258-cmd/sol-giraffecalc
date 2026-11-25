@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>운영자 페이지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 운영자 페이지 — 마을 명부 장부. 차분한 보랏빛 회색, 표가 주인공 */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#121017);--ink:light-dark(#1b1820,#f0edf4);--mute:light-dark(#655f6d,#a59fae);--card:light-dark(#f4f2f7,#1c1a22);--line:light-dark(#e2dee8,#302b39);--band:#2e2a3a;--acc:light-dark(#4b3fd1,#9d8cff);--warn:light-dark(#b0391f,#ff9b7d);--ok:light-dark(#1f7a55,#5fd0a0)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,48px) max(5vw,16px)}
+.wrap{max-width:1100px;margin:0 auto}
+h1,h2{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;line-height:1.1;margin:0}
+h2{font-size:28px;margin-bottom:8px}
+.top{background:var(--band);color:#fff}
+.top h1{font-size:clamp(32px,5vw,46px)}
+.top h1 small{font-family:"Noto Sans KR",sans-serif;font-size:15px;font-weight:500;color:#cfc8de;margin-left:6px}
+.top p{margin:8px 0 0;color:#cfc8de;max-width:60ch}
+.small{font-size:14px;color:var(--mute)}
+.err{color:var(--warn)}.okm{color:var(--ok)}
+section+section{border-top:1px solid var(--line)}
+button{font:700 14px "Noto Sans KR",sans-serif;min-height:38px;padding:0 14px;border-radius:9px;border:0;cursor:pointer;background:var(--acc);color:#fff}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button{white-space:nowrap}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type=text]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;min-height:40px;padding:0 10px;width:100%}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:13px;color:var(--mute);font-weight:500}
+td.id{font-variant-numeric:tabular-nums;color:var(--mute);font-size:14px;white-space:nowrap}
+.roles{display:flex;gap:6px;flex-wrap:wrap}
+.role{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:99px;padding:4px 10px 4px 8px;font-size:14px;cursor:pointer;user-select:none;white-space:nowrap}
+.role input{width:18px;height:18px;margin:0;accent-color:var(--acc)}
+.role:has(input:checked){border-color:var(--acc);background:light-dark(#ece9ff,#24203b)}
+.add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:14px;margin-top:14px}
+.req{display:grid;gap:8px;margin-top:6px}
+.req div{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:10px 12px}
+.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:10px}
+.file{background:var(--card);border-radius:12px;padding:16px;display:grid;gap:8px}
+.file b{font-size:17px}
+.file label.up{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border-radius:9px;background:var(--acc);color:#fff;font-weight:700;font-size:14px;cursor:pointer;width:max-content;padding:0 14px}
+.file input{position:absolute;opacity:0;width:1px;height:1px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1}
+@media(max-width:700px){.add{grid-template-columns:minmax(0,1fr)}td,th{padding:6px 4px}}
+</style>
+<style id="sitenav-css">
+.sitenav{position:sticky;top:0;z-index:50;background:#14121c;border-bottom:1px solid #2c2838;font:500 15px/1 "Noto Sans KR",system-ui,sans-serif}
+.sitenav .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:0 max(5vw,16px);overflow-x:auto;scrollbar-width:none}
+.sitenav a{color:#c9c4d6;text-decoration:none;padding:0 14px;min-height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:3px solid transparent}
+.sitenav a:hover{color:#fff}
+.sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
+.sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="preload" href="fonts/do-hyeon-site.woff2" as="font" type="font/woff2" crossorigin>
+<style id="dh-site">@font-face{font-family:"DHsite";src:url("fonts/do-hyeon-site.woff2") format("woff2");font-display:block}</style>
+</head>
+<body>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html">강화 기대값</a><a href="market.html" data-need="member">요리 재료 거래소</a><a href="cooking.html" data-need="요리사">요리</a><a href="alchemy.html" data-need="연금술사">연금술</a><a href="admin.html" data-need="운영자" aria-current="page">운영자</a></div></nav>
+<header class="band top"><div class="wrap">
+  <h1>운영자 페이지 <small>by.진솔</small></h1>
+  <p>마을 명단에 사람을 넣고 마크 닉네임과 권한을 정해요. 농부는 작물, 어부는 물고기 판매 글을 올리고, 요리사는 재료를 사고 요리 계산기를, 연금술사는 연금술 계산기를 쓸 수 있어요.</p>
+</div></header>
+<div id="gate"></div>
+<div id="app" hidden>
+<section class="band"><div class="wrap">
+  <h2>마을 명단</h2>
+  <p class="small" style="margin:0 0 12px">권한 칸을 누르면 바로 저장돼요. 이름과 마크 닉네임은 고친 뒤 칸 밖을 누르면 저장돼요. 판매 글에는 여기서 정한 마크 닉네임이 들어가요.</p>
+  <div class="scroll"><table><thead><tr><th style="width:15%">이름</th><th style="width:15%">마크 닉네임</th><th>디스코드 ID</th><th>권한</th><th></th></tr></thead><tbody id="mem"></tbody></table></div>
+  <form class="add" id="addF">
+    <input type="text" id="aId" inputmode="numeric" placeholder="디스코드 ID (숫자)" aria-label="디스코드 ID" required>
+    <input type="text" id="aName" maxlength="20" placeholder="이름 (알아보기 쉽게)" aria-label="이름">
+    <input type="text" id="aMc" maxlength="16" placeholder="마크 닉네임" aria-label="마크 닉네임" autocomplete="off">
+    <button type="submit">명단에 추가</button>
+    <div class="roles" id="aRoles" style="grid-column:1/-1"></div>
+  </form>
+  <p class="small err" id="aErr" role="alert"></p>
+</div></section>
+<section class="band"><div class="wrap">
+  <h2>로그인했지만 명단에 없는 사람</h2>
+  <p class="small" style="margin:0">거래소에 로그인해 본 사람 중 아직 명단에 없는 사람이에요. 마을 사람이 맞으면 추가하세요.</p>
+  <div class="req" id="req"></div>
+</div></section>
+<section class="band"><div class="wrap">
+  <h2>계산기 파일</h2>
+  <p class="small" style="margin:0">연금술·요리 계산기는 공개 사이트가 아니라 여기 비공개 저장소에 올려 둬요. 받은 alchemy.html, cooking.html 파일을 올리세요. 계산기를 고치면 같은 이름으로 다시 올리면 돼요.</p>
+  <div class="files" id="files"></div>
+</div></section>
+</div>
+<div id="toast" role="status"></div>
+<script>
+{
+const A=window.Auth,sb=A&&A.sb,$=id=>document.getElementById(id),esc=A?A.esc:s=>s;
+const ROLES=['농부','어부','요리사','연금술사','운영자'];
+const FILES=[['alchemy.html','연금술 계산기'],['cooking.html','요리 계산기']];
+let members=[];
+const toast=(t,bad)=>{const e=$('toast');e.textContent=t;e.style.background=bad?'var(--warn)':'';e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600)};
+const friendly=e=>{const m=String((e&&e.message)||e);return /[가-힣]/.test(m)&&!/violates|permission/.test(m)?m:/duplicate|unique/.test(m)?'이미 명단에 있는 ID예요.':/permission|policy|violates|JWT/i.test(m)?'운영자 권한이 없거나 로그인이 풀렸어요.':'저장하지 못했어요. ('+m+')'};
+const roleBoxes=(sel,key)=>ROLES.map(r=>`<label class="role"><input type="checkbox" data-r="${r}"${key?` data-k="${esc(key)}"`:''}${sel.includes(r)?' checked':''}>${r}</label>`).join('');
+const myId=()=>A.info().discordId;
+
+function drawMembers(){
+  $('mem').innerHTML=members.length?members.map(m=>`<tr><td><input type="text" value="${esc(m.name||'')}" data-name="${esc(m.discord_id)}" maxlength="20" aria-label="이름"></td><td><input type="text" value="${esc(m.mc_name||'')}" data-mc="${esc(m.discord_id)}" maxlength="16" placeholder="미지정" aria-label="마크 닉네임" autocomplete="off"></td><td class="id">${esc(m.discord_id)}${m.discord_id===myId()?' (나)':''}</td><td><div class="roles">${roleBoxes(m.roles||[],m.discord_id)}</div></td><td>${m.discord_id===myId()?'':`<button type="button" class="ghost" data-del="${esc(m.discord_id)}">빼기</button>`}</td></tr>`).join(''):'<tr><td colspan="5" class="small">아직 명단이 비어 있어요.</td></tr>';
+}
+async function loadMembers(){
+  const {data,error}=await sb.from('members').select('*').order('added_at',{ascending:true});
+  if(error){toast(friendly(error),1);return}members=data||[];drawMembers();
+}
+async function loadReq(){
+  const {data,error}=await sb.rpc('pending_users');
+  const L=error?[]:(data||[]);
+  $('req').innerHTML=error?`<p class="small err">${esc(friendly(error))}</p>`:L.length?L.map(u=>`<div><span><b>${esc(u.name||'이름 없음')}</b> <span class="small">${esc(u.discord_id)}</span></span><button type="button" data-addreq="${esc(u.discord_id)}" data-nm="${esc(u.name||'')}">명단에 추가</button></div>`).join(''):'<p class="small">없어요.</p>';
+}
+async function loadFiles(){
+  const {data,error}=await sb.storage.from('pages').list('',{limit:100});
+  const have={};(data||[]).forEach(o=>have[o.name]=o);
+  $('files').innerHTML=FILES.map(([f,t])=>{const o=have[f],at=o&&(o.updated_at||o.created_at);return `<div class="file"><b>${t}</b><span class="small">${f}</span><span class="small ${o?'okm':'err'}">${error?'목록을 불러오지 못했어요':o?'올라가 있음'+(at?' · '+new Date(at).toLocaleString('ko-KR'):''):'아직 안 올라감'}</span><label class="up">파일 올리기<input type="file" accept=".html,text/html" data-file="${f}"></label></div>`}).join('');
+}
+async function addMember(id,name,roles,mc){
+  id=String(id).trim();
+  if(!/^\d{15,21}$/.test(id))return '디스코드 ID는 15~21자리 숫자예요.';
+  const {error}=await sb.from('members').insert({discord_id:id,name:name||null,mc_name:mc||null,roles});
+  if(error)return friendly(error);
+  await Promise.all([loadMembers(),loadReq()]);return '';
+}
+
+function wire(){
+  $('aRoles').innerHTML=roleBoxes([]);
+  $('addF').onsubmit=async e=>{e.preventDefault();$('aErr').textContent='';
+    const roles=[...$('aRoles').querySelectorAll('input:checked')].map(i=>i.dataset.r);
+    const err=await addMember($('aId').value,$('aName').value.trim(),roles,$('aMc').value.trim());
+    if(err){$('aErr').textContent=err;return}
+    $('aId').value='';$('aName').value='';$('aMc').value='';for(const i of $('aRoles').querySelectorAll('input'))i.checked=false;toast('명단에 추가했어요.');
+  };
+  $('mem').addEventListener('change',async e=>{const t=e.target;
+    if(t.dataset.r&&t.dataset.k){
+      const m=members.find(x=>x.discord_id===t.dataset.k);if(!m)return;
+      const roles=ROLES.filter(r=>r===t.dataset.r?t.checked:(m.roles||[]).includes(r));
+      const {error}=await sb.from('members').update({roles}).eq('discord_id',m.discord_id);
+      if(error){t.checked=!t.checked;toast(friendly(error),1);return}
+      m.roles=roles;toast(`${m.name||m.discord_id}: ${roles.length?roles.join('·'):'권한 없음'}`);
+    }else if(t.dataset.mc){
+      const v=t.value.trim(),m=members.find(x=>x.discord_id===t.dataset.mc);
+      const {error}=await sb.from('members').update({mc_name:v||null}).eq('discord_id',t.dataset.mc);
+      if(error){t.value=(m&&m.mc_name)||'';toast(friendly(error),1);return}
+      if(m)m.mc_name=v||null;toast(v?`마크 닉네임을 ${v}(으)로 정했어요. 판매 중인 글에도 바로 반영돼요.`:'마크 닉네임을 지웠어요.');
+    }else if(t.dataset.name){
+      const {error}=await sb.from('members').update({name:t.value.trim()||null}).eq('discord_id',t.dataset.name);
+      toast(error?friendly(error):'이름을 저장했어요.',!!error);
+    }
+  });
+  $('mem').addEventListener('click',async e=>{const b=e.target.closest('[data-del]');if(!b)return;
+    if(b.dataset.armed!=='1'){b.dataset.armed='1';b.textContent='한 번 더 누르면 빼기';setTimeout(()=>{b.dataset.armed='';b.textContent='빼기'},2500);return}
+    const {error}=await sb.from('members').delete().eq('discord_id',b.dataset.del);
+    if(error){toast(friendly(error),1);return}toast('명단에서 뺐어요.');loadMembers();loadReq();
+  });
+  $('req').addEventListener('click',async e=>{const b=e.target.closest('[data-addreq]');if(!b)return;b.disabled=true;
+    const err=await addMember(b.dataset.addreq,b.dataset.nm,[]);if(err){b.disabled=false;toast(err,1)}else toast('명단에 추가했어요. 위 명단에서 마크 닉네임과 권한을 정해 주세요.');
+  });
+  $('files').addEventListener('change',async e=>{const t=e.target;if(!t.dataset.file)return;const f=t.files[0];t.value='';if(!f)return;
+    const txt=await f.text();
+    if(!/^\s*<!DOCTYPE html>/i.test(txt)||txt.length<2000){toast('계산기 HTML 파일이 아닌 것 같아요. 받은 '+t.dataset.file+' 파일을 골라 주세요.',1);return}
+    toast('올리는 중…');
+    const {error}=await sb.storage.from('pages').upload(t.dataset.file,new Blob([txt],{type:'text/html'}),{upsert:true,contentType:'text/html'});
+    if(error){toast(friendly(error),1);return}toast(t.dataset.file+' 파일을 올렸어요.');loadFiles();
+  });
+}
+
+async function init(){
+  if(!A)return;
+  await A.ready;
+  if(!sb){$('gate').innerHTML='<p class="small" style="text-align:center;padding:40px 16px">config.js에 Supabase 주소와 키를 넣어야 운영자 페이지를 쓸 수 있어요.</p>';return}
+  const show=async()=>{const ok=A.gate($('gate'),'운영자','운영자 페이지');$('app').hidden=!ok;if(ok){$('gate').innerHTML='';await Promise.all([loadMembers(),loadReq(),loadFiles()])}};
+  wire();await show();A.onChange(show);
+}
+init();
+}
+</script>
+</body>
+</html>

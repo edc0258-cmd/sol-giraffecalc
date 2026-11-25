@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>요리 재료 거래소</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* 요리 재료 거래소 — 장터 게시판. 초록 장터 띠, 금빛 가격, 계산기들과 같은 글꼴 */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#111613);--ink:light-dark(#16201b,#ecf2ee);--mute:light-dark(#5f6b65,#9caaa2);--card:light-dark(#f2f6f3,#1a221e);--line:light-dark(#dce5df,#2b3731);--band:#1d4a3a;--acc:light-dark(#1f7a55,#5fd0a0);--gold:#f2c14e;--warn:light-dark(#b0391f,#ff9b7d);--buy:light-dark(#2f5fb3,#8fb4ff)}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,48px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2,h3{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;line-height:1.1;margin:0}
+h2{font-size:28px;margin-bottom:12px}
+.top{background:var(--band);color:#fff}
+.top .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between}
+.top h1{font-size:clamp(34px,5vw,50px)}
+.top h1 small{font-family:"Noto Sans KR",sans-serif;font-size:15px;font-weight:500;color:#cfe5da;margin-left:6px;white-space:nowrap}
+.top p{margin:8px 0 0;color:#cfe5da;max-width:54ch}
+.auth{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.auth .who{font-weight:700}
+button,.btn{font:700 15px "Noto Sans KR",sans-serif;min-height:42px;padding:0 16px;border-radius:10px;border:0;cursor:pointer;background:var(--acc);color:#fff}
+button.ghost{background:transparent;color:inherit;border:1px solid currentColor}
+button.dc{background:#5865F2;color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.sm{min-height:34px;padding:0 10px;font-size:13px}
+.notice{background:light-dark(#fff4d6,#3a3016);color:light-dark(#5b4300,#f6dc96);border-radius:12px;padding:14px 16px;margin-bottom:18px;font-size:15px}
+.notice code{font-size:13px}
+.err{color:var(--warn)}
+.small{font-size:14px;color:var(--mute)}
+/* 아이템 시세 */
+.groups{display:grid;gap:16px}
+.grp h3{font-size:20px;margin-bottom:8px;color:var(--mute)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.tile{display:flex;align-items:center;gap:8px;text-align:left;background:var(--card);color:var(--ink);border:2px solid transparent;border-radius:10px;padding:8px 10px;min-height:56px;font-weight:500}
+.tile:hover{border-color:var(--line)}
+.tile[aria-pressed=true]{border-color:var(--acc)}
+.tile .t{display:flex;flex-direction:column;line-height:1.25;font-size:14px}
+.tile .t b{font-weight:700}
+.tile .t span{font-size:12px;color:var(--mute);white-space:nowrap}
+.tile .t span.has{color:var(--acc);font-weight:700}
+.ic{width:28px;height:28px;flex:none;image-rendering:pixelated}
+.ic.fish{display:grid;place-items:center;border-radius:50%;background:light-dark(#d7e8f5,#203241);color:light-dark(#2a5878,#9cc7e8);font:700 13px "Noto Sans KR",sans-serif}
+/* 본문 */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:28px;align-items:start}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;color:var(--ink);border-radius:0;min-height:40px}
+.seg button[aria-pressed=true]{background:var(--acc);color:#fff}
+.seg button.b[aria-pressed=true]{background:var(--buy)}
+select,input,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:42px;padding:0 10px}
+textarea{padding:8px 10px;min-height:60px;resize:vertical}
+.chipx{display:inline-flex;align-items:center;gap:6px;background:var(--card);border-radius:99px;padding:4px 6px 4px 12px;font-size:14px}
+.chipx button{min-height:28px;padding:0 8px;background:transparent;color:var(--mute);font-size:16px}
+.list{display:grid;gap:8px}
+.it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--card);border-radius:12px;padding:12px 14px;border-left:5px solid var(--acc)}
+.it.buy{border-left-color:var(--buy)}
+.it .nm{font-weight:700}
+.it .tag{font-size:12px;font-weight:700;color:#fff;background:var(--acc);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:2px}
+.it.buy .tag{background:var(--buy)}
+.it .meta{font-size:13px;color:var(--mute)}
+.it .pr{text-align:right;white-space:nowrap}
+.it .pr b{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;font-size:26px;color:light-dark(#a3700b,var(--gold));line-height:1}
+.it .pr span{display:block;font-size:12px;color:var(--mute)}
+.it .who{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:14px}
+.it .who .mc{font-weight:700}
+.it .note{grid-column:2/4;font-size:14px;color:var(--ink);background:var(--bg);border-radius:8px;padding:6px 10px;overflow-wrap:anywhere}
+.it .own{grid-column:2/4;display:flex;gap:6px;flex-wrap:wrap}
+.empty{color:var(--mute);padding:20px 0}
+.jobs{grid-template-columns:repeat(3,1fr)!important;max-width:620px!important}
+.it.post{display:block;padding:14px 16px}
+#secMain .bar{gap:8px 10px}
+#secMain .bar #listTitle{margin:0 auto 0 0;font-size:28px}
+#secMain .bar select,#secMain .bar button,#secMain .bar .chipx{font-size:15px;min-height:40px}
+#secMain .bar #reload{font-weight:500;padding:0 14px;border-radius:10px}
+#secMain .bar .chipx{padding:0 4px 0 14px}
+.grid.solo{grid-template-columns:minmax(0,1fr)}
+.ph2{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;align-items:center;margin-bottom:8px}
+.ph2 .mc{font-weight:700}
+.ph2 .per{font-size:14px;font-weight:700;color:var(--acc);text-align:right}.ph2 .per.end{color:var(--warn)}.ph2 .per .meta{font-weight:400}
+.it.post .note{margin:0 0 8px}
+.lns{display:grid;gap:6px}
+.ln{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;background:var(--bg);border-radius:10px;padding:8px 10px;border:2px solid transparent}
+.ln.hit{border-color:var(--acc)}
+.ln.dim{opacity:.55}
+.ln .li{display:flex;flex-direction:column;line-height:1.3}.ln .li b{font-size:16px}
+.ln .lp{text-align:right;white-space:nowrap;font-size:14px;color:var(--mute)}
+.ln .lp b{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;font-size:22px;color:light-dark(#a3700b,var(--gold))}
+.ln .lp span{display:block;font-size:12px}
+.ln .lb,.ln .lw{grid-column:2/4}
+.buy{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.buy input{width:84px;min-height:36px}
+.buy .u{font-size:14px;color:var(--mute)}
+.lw{display:grid;gap:4px;font-size:14px}
+.lw>span{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:light-dark(#fbf5e6,#262014);border-radius:8px;padding:4px 8px}
+.so{color:var(--warn)}
+.ln .li .pd{display:inline-block;width:max-content;margin-top:3px;font-size:12px;font-weight:700;color:#fff;background:#c98a12;border-radius:6px;padding:1px 7px}
+.it.tr .tag{background:#c98a12}
+.frows{display:grid;gap:8px}
+.frow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;gap:6px;align-items:center;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.frow select,.frow input{min-height:40px;padding:0 8px;font-size:15px}
+.frow [data-f=item]{grid-column:1;grid-row:1}.frow [data-f=unit]{grid-column:2;grid-row:1}.frow button{grid-column:3;grid-row:1;min-height:40px;padding:0 12px}
+.frow [data-f=qty]{grid-column:1;grid-row:2}.frow [data-f=price]{grid-column:2/4;grid-row:2}
+.hf{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:6px 0 10px}
+.hf label{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute);flex-wrap:wrap}
+.hf .who{flex:1 1 240px}.hf .who input{flex:1;min-width:0}
+.hq{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.hq button{background:var(--card);color:var(--ink);border:1px solid var(--line);min-height:34px;font-size:13px;border-radius:99px}
+.hq button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hsum{display:flex;flex-wrap:wrap;gap:8px 22px;background:var(--card);border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:14px;color:var(--mute)}
+.hsum b{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;font-size:24px;color:var(--ink);margin-left:6px}
+table.ht{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+.ht th,.ht td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.ht th{font-size:13px;color:var(--mute);font-weight:500}
+.ht td.n,.ht th.n{text-align:right}
+.ht .k{font-size:12px;font-weight:700;color:#fff;border-radius:6px;padding:1px 7px}.ht .k.s{background:var(--acc)}.ht .k.b{background:#c98a12}
+.ht mark{background:light-dark(#fff0b3,#5a4a10);color:inherit;border-radius:3px}
+@media(max-width:700px){.ht thead{display:none}.ht tr{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:10px 0;border-bottom:1px solid var(--line)}.ht td{border:0;padding:0}.ht td.d{grid-column:1/4;font-size:13px;color:var(--mute)}.ht td.q,.ht td.u{display:none}.ht td.t{text-align:right}.ht td.w{grid-column:1/4;font-size:14px}.ht td.i{grid-column:1/3}}
+.ht td.w .wl{display:none}.ht td.w button{margin-left:6px;vertical-align:1px}
+@media(max-width:700px){.ht td.w .wl{display:inline}}
+.it.pend{border-left-color:#c98a12;background:light-dark(#fbf5e6,#262014)}
+.it.pend .tag{background:#c98a12}
+.mine h3{font-size:19px;margin:12px 0 2px}.mine h3:first-child{margin-top:0}
+.mine .st-done{color:var(--acc);font-weight:700}.mine .st-pending{color:#c98a12;font-weight:700}
+.gate{max-width:560px;margin:8px auto 24px;background:var(--card);border-radius:16px;padding:28px 24px;text-align:center}
+.gate h2{font-size:30px;margin-bottom:10px}
+.gate p{margin:0 0 16px;color:var(--mute)}
+.gate .id{display:inline-flex;gap:8px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:12px}
+.jobs{display:grid;grid-template-columns:1fr 1fr;max-width:420px;margin-bottom:14px}
+.jobs button{min-height:52px;font-size:18px}
+.jobs button span{font-size:13px;font-weight:500;opacity:.85;margin-left:6px}
+.cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.cats button{background:var(--card);color:var(--ink);border:1px solid var(--line);min-height:38px;font-size:14px;border-radius:99px}
+.cats button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+aside{position:sticky;top:62px;display:grid;gap:16px}
+.panel{background:var(--card);border-radius:14px;padding:18px}
+.form{display:grid;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--mute)}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form .sum{font-size:14px;color:var(--mute)}
+.mine{display:grid;gap:6px;font-size:14px}
+.mine div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:6px 0}
+.sign{color:var(--mute);font-size:13px;text-align:right;margin-top:24px}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}aside{position:static}}
+@media(max-width:600px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.tile{flex-direction:column;align-items:flex-start;gap:4px;padding:7px 8px;min-height:0}.tile .ic{width:22px;height:22px}.tile .t{font-size:13px}.tile .t span{white-space:normal;font-size:11px}.grp h3{font-size:18px}}
+</style>
+<style id="sitenav-css">
+.sitenav{position:sticky;top:0;z-index:50;background:#14121c;border-bottom:1px solid #2c2838;font:500 15px/1 "Noto Sans KR",system-ui,sans-serif}
+.sitenav .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:0 max(5vw,16px);overflow-x:auto;scrollbar-width:none}
+.sitenav a{color:#c9c4d6;text-decoration:none;padding:0 14px;min-height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:3px solid transparent}
+.sitenav a:hover{color:#fff}
+.sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
+.sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="preload" href="fonts/do-hyeon-site.woff2" as="font" type="font/woff2" crossorigin>
+<style id="dh-site">@font-face{font-family:"DHsite";src:url("fonts/do-hyeon-site.woff2") format("woff2");font-display:block}</style>
+</head>
+<body>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html">강화 기대값</a><a href="market.html" data-need="member" aria-current="page">요리 재료 거래소</a><a href="cooking.html" data-need="요리사">요리</a><a href="alchemy.html" data-need="연금술사">연금술</a><a href="admin.html" data-need="운영자">운영자</a></div></nav>
+<header class="band top"><div class="wrap">
+  <div>
+    <h1>요리 재료 거래소 <small>by.진솔</small></h1>
+    <p>어부와 농부가 물고기·작물 판매 글을 올리고, 요리사가 골라 사는 마을 거래소예요. 요리사는 사고 싶은 글에 거래 대기를 걸고, 게임에서 거래한 뒤 거래 완료를 눌러요. 사이트에서 돈이 오가지는 않아요.</p>
+  </div>
+</div></header>
+
+<div class="band" id="gateBox" hidden><div class="gate" id="gate"></div></div>
+<section class="band" style="padding-bottom:12px" id="secTop"><div class="wrap">
+  <div id="setup"></div>
+  <div class="seg jobs" role="group" aria-label="직업" id="jobs"></div>
+  <div class="cats" role="group" aria-label="작물 카테고리" id="cats"></div>
+  <p class="small" id="tileHint" style="margin:-4px 0 14px">아이템마다 지금 판매 중인 것 중 가장 싼 1개당 가격이에요(세트·셜커는 1개 값으로 바꿔 계산). 누르면 그 아이템이 들어 있는 글만 모아 보고, 그 품목만 따로 살 수 있어요.</p>
+  <div class="groups" id="tiles"></div>
+</div></section>
+
+<section class="band" id="secMine" hidden style="padding-top:0"><div class="wrap">
+  <h2>진행 중인 거래</h2>
+  <p class="small" id="liveNote" style="margin:-4px 0 12px"></p>
+  <div class="list" id="myLive"></div>
+  <h2 style="margin-top:36px" id="hTitle">거래 내역</h2>
+  <p class="small" id="hNote" style="margin:-4px 0 8px"></p>
+  <div class="hf">
+    <label>거래일 <input type="date" id="hFrom" aria-label="시작일"> ~ <input type="date" id="hTo" aria-label="종료일"></label>
+    <label class="who">거래한 사람 <input type="search" id="hWho" placeholder="닉네임으로 찾기" autocomplete="off"></label>
+  </div>
+  <div class="hq" id="hQuick"><button type="button" data-q="7">최근 7일</button><button type="button" data-q="30">최근 30일</button><button type="button" data-q="0">최근 90일 전체</button><button type="button" data-q="x" class="ghost">검색 초기화</button></div>
+  <div class="hsum" id="hSum"></div>
+  <div id="hist"></div>
+</div></section>
+<main class="band" id="secMain"><div class="wrap grid">
+  <section>
+    <div class="bar">
+      <h2 id="listTitle"></h2>
+      <select id="sort" aria-label="정렬">
+        <option value="cheap">가격 낮은 순</option>
+        <option value="exp">가격 높은 순</option>
+        <option value="new">최신 순</option>
+      </select>
+      <span id="flt"></span>
+      <button type="button" class="ghost sm" id="reload">새로고침</button>
+    </div>
+    <div class="list" id="list" aria-live="polite"></div>
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>판매 글 올리기</h2>
+      <div id="formBox"></div>
+    </div>
+  </aside>
+</div></main>
+<div class="wrap" style="padding:0 max(5vw,16px) 32px"><p class="sign">마을 명단에 있는 사람만 볼 수 있어요. 판매 글은 판매자가 지우거나 다 팔릴 때까지 올라가 있고, 거래 완료 기록은 판매자와 구매자에게만 보여요. · by.진솔</p></div>
+
+<script>
+{
+const ICONS={"호박": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADvklEQVR42o2Vz4scRRTHP1XV09M9P3Zmszuz2bCbZDEh4A+CJCFGAoqoEMglB0XwIB4ED148Cl71DxAvIoQcgqC5CEEjAS8GgzGgJBrJItGQ7GzcXzOzvTM9093V9TzMmk2iUd+hTu996tW3Xn1LAUjS5mHRu31FVi9/Rp5bJg++TG3ugHpYripuQ/0T0NmUtHNblr89ya0r52kECQlF+lHMzkPHmTz6Bn59p1Ke/9/AwcKPsvT9GVbnL1AbM2glrCwu09wWsNTJmJmdoBPB+J4jNJ48QXH2kFJa3w90wzWyaEkWvngf3Z/Hdz02uuu0VlIMQrdvKfma1AoomJppsmO6Tu+PRfSOo8wef5difVqpYGIEvHjybTG/f4VKOlgUvsrJHfRjy8+tIUEjpVIT4qEwt83D75cplapUQ4NyGVES4u05xv7XPlAewDdffkIaxxyYKVAONNZowqKiG+fsbfoMM4/+HYfKHNVyhfHJkHgjIYrgTjul1dlgcO00AB6AFUXqhZy7tsFjM0V2TngY47H/8e20VyL8gmZlPWeqUSJzipX1hLiXEaew0HGUKgFkegu40k2o1UoMM8dyFvLLT12mawUOJJpaKCiEahF6vSFpYrm1mrLYTtn9SJPadEBnaZWxSmELKE7wbIxzgheW8P2YRPt8fb3HWMGxt1GgEirWNnIGVrF9uk6UdNGeT9XkxNpSLwkA+q9x8Qx4RkHcQWlQxqM82aAzEL67mRA7gwQl+pnG1Jp4vg/9NjpdxxiF1up+oDGKgqfB5eAsZAM8SRBTIDdFTBDiV+ukwwS6tyBPAMitkKbu7hzrh745cei0hyEn9BytVgc/WUMrAbcFSK2glGKzwZGGAFnmsHakgwgIjBZxlH2FzYXAUxgzqnRulJdZRynU93eY54K1wsYAcgdRLORO4QSS1GHM5tParBMR2pFgc7C5MEyFhaXhVofdHhSNI8shs0KajnbPc0EEeMBf8k2IAMvtHBGIknsu5dCzx0ioUA4gHo70EQTnoBSau/oMk5xuD5J0JM16ZOkNHAkh+w6/MDoFgO0vs9S6KWc+fI9rl84T9YWpcYPWoLWmUTcEYpltBly9kbBjQnFjMade0YzvfY4Tb71DY2ZOeeWpv9vX/A8X5dynp2jNXyJqryFANYBmBcpBkd4gozxWY2zXYY4cf5U9B59R+kH7etBg02RI67fr8vmpj7h64SxOYKoEldCw76kXOfrSmzR3P6oKxfD/Ofa98evVy3L29MfUCsLzr7zOriee/tcv4E9IWNJ0gEz79QAAAABJRU5ErkJggg==", "밀": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAADoUlEQVR42qWUW2hcVRSGvz3nnDmZOXOf5thMmkxMxsZLSrBNKVVsXySCD+pDRKX1TcEGBQ1FsVKsRFBrwYBaxeqThQq+iD4ZhIrWGENai9qaEHNpSSczmZkzmVsyk7kcHxKnjYnTi+tps/ba/9r722stYRYMbsbSyXnz5Md99L56UvxXjFB9yDcqePyj90yPvUKdVEC1rfgmx34xJ8dG6H7shXVJagonkwlTski43B4xdGaQBi/4XRKNzToLRtQ0EmEuT/9WjTdNEyFWclhqCb/19ut8cuJ9AEJ6ibagh8ZmnVg4wUD/fhLzEZ556UT1tkZs1qziqMX45VeeNxORv2jylXE57dwZ8uJxqQyfi9DQrGMk0sQiBu33tBCbMwiGdvDoU4fEdRl77RUqGqhWhZYmF/lCmSvRHA63RiaVwyLAX+8hk8qxbUc3gaa7q2drovBqFTwaqOqqcL5EOJLD6dbIpnIIIdike8imcnRs76Z92wPihj4v2BZAtS6SjKdw2x0ocgZFLtC+xcrcZfA5JEKr68+Pv4iRrZjzOSeAsFyvzDxula5OHQCnW0NzOxk9H6WrU8dqlRg9HwVgIlzCqXfw2qE3a6MY++Mns5DPocgSHpeNZHYZWRE4NZnsYhGHZkVRJIqmQLVZkSWTYmGJ+Vi0tvAXnx0hGY8gWSxoqo2JcBbJUmGz9yo91abiq/fgq/cQ8AmSkYscO9Zfu9xOffqsGdRlHDYFbbXVpiJZFnLLtDVY+X5olsJykUKhyJ9zCgA7u3Zz8ODhjcttcmzU/P3X05y7kKTJvxlVVqqi0ViGbDZPOl5mMlKiUoFyWaL3QB8Am/z1G7f0ghE1Z6YuMjI0yJwhk8mW0epMVGuZufgiyeQS2Uye3GKe9KKy2saCvXsfrD0rBvr3Y+QsRNMKdzUUOfXtDD6vjV2dfqYmZgkvSKSWLIDCrq3KKorSxhPuw4HD5tCZQUJ6iUce2oqRKRNLlfnquyvrgnsP9FVv98STD5vX7h195wOCwVZRHZvOugq6G9rb/MTTZWBlgv1jgUAT99+3B4CWltaq//Geff+qd+9aFG674DY3tIf8jM8u43VY0D1XCTUGttDTs28dw418a4Q77t3D9NiPjM8uM35h5potZc3zbtbk2+/YLly+oHl6eJp8XsZtq+B3VPi/Jgth4ennjorWn38wR0eHSccvkUleYmfXbuw27ZaF13Xe2bMj5tfffMkbR94Vtyyq+vgbWLdkdUc2j5QAAAAASUVORK5CYII=", "사탕수수": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAADAElEQVR42pWUXWibZRTHf2/7Lt9tki5dpm1WutGxraEKw4GOMYdWRRFEUK9URBDaeaF34oVU0IuB3+IHeCWb3zivRETYQEFlq7pitZ2xky3JkjRJ8+b9TN6vx4tgaDHV7sBz8XDO8+Oc55zzl0R7ja1YCw3HbwnP9TEVh2gkRjyWkNbH9LFF+8E/Kd5vzfDyxUeYnjnMO5++8a8YebPHb+Vmxc8XLvDjx0Xun9tH4rowni04PbfMb59flnq96Qk7u3pSVKoVnLbP4EiIgVSQWsFCq9nsvzUFQMFcEjl9noFUiElpWgpLid5lnqmcolzpwOIjYQaHQ9QLFld+b3ZheWuZM5VTzPufYaKITTMrLGpUSxaxoQA33Z0GID4UQC/LnJ5bhrk7RTQZYGR/nOJSk3vfvYODu44KqVc380pOfLDyAkagzPB4jIvf1igt65iKy8SRBBM3p2gULVZXDH75ssTzj77KgbGp3pnVjBLRVD+e2IZet1ldMbEtHznQhwDyvzZRrrao/mVwcNdRDoxNMZLOSD0ze+yjW0R2egdtwyP3fZ3cdwrpvREi22WqV1vkzzW6ses7uwH2zR+fiA9/er1712sOpSWDYzMZAAzF4evXVkimoySuDzK8J8xodoDjE2+zM7RHklVLEe+dfaVTXjsPgFJvYysekiSR3hvpgNZstDWHofEIO0YjWJrDpfMNyn/qmE+4EALZapt8Nf8FcrCfcLSfWHwb2pqNpwoiCZnkaBDX9tHqDmq1TXBQJhjrwzfDOFYM1wLhdCZM9myf0oJK5lASy/CwDI/Sgsrk7cNsz0RIjYUpLGpcOt+gdtkEoLSg8vA9j/PMs89t2ITun9114kahlVsoVywyh5KkdobwXJ9GzSZ/rsGLT77EfccekP5rf7uj0Sxa2LrbdZi6i224NIsWxx96in3jk/8rBl2YWmxtcJi6i9mwUYstZh98WtqKsvStn5d/DkB5UeWG5OFNFWLLqlFeVDkx+ybZ3VNci/VUjSPZ28ju7qzItcD+BlZ2aRQpqGGYAAAAAElFTkSuQmCC", "양파": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAADHUlEQVR42s2Vy2ucVRiHn/PNN5czl0wmiclMJamNINJNCyoo4kJBF26EIG7ERYVKF91L60JmURX/gRZdqCutSFZaFxURKoiJFRtrTadXo5m2mUtnvvnul3NctB0rU0OiG1944cDL7+G8v/Oec4QOuvzXOHt5We/e9YgwhAGAuR2x69uEka8BxktTIog8PN/Rn3xzlNrKrF546lVqkzvFtqBffn9c/9j4FoAj+z/g9PlT+ovvPkZWJXGpRaN1mtrkTsRW23/j/X16vJYmkzfYuBQgq3JYq1TAsiB0FK89cxhjy61bAXGkEIbALJpEdoShEnI58DwY3PAoqAp9p7t1qGeFJFECQpAupontGEMppATf/wv68Nze7XnqOBC3Eq7/3Lm9+wyDdhaAw/vfpTY5J4B/9nTpo7oGCMKYvu3yee83UhmDVNogW9DIqTGkNJB5AYA0axCliAbR6Eh5vZZ22n8Q9JqYpiCJYpKBx45Uml4U48Ux6ZxByjBIQoUbKwAstU4SamInHoW2L/3Eha+PMzGdp1A0UUozXslT2nBZ8l2uxiFOR5GTIa4V4FkhAOXpPGYmtfnwz8zNUhkrkiiFZbuMla8z4xbohQknIgdZlVQekEgJzV89Di7Uh56OQIMw5qblUCpIBv0uQRBgOyEZEwI/xrFDbM/D8yJk0cQvmozX0pw49Snz1d366cefFyMjFSUJrh9iCPB9F9d1CFyXOFKEQULgxSRWiFQlcqpMVlUws4KVxjKrV87eu/3IcwBonGswUZ0hX8phpnpcvdC/JYg1s9dsXj+yKO5oDrz5or6bYQI43ZZefPsAzc5gWLh/wyWOrqGUwu7fOozLzQ6dvjPi/7H6Z+Jv0N9/WdI3m1fY89xLzLsha+dXWFs9w3qrT9t20FoT+sntVyokmy/w2LMLm14Sc/3cDzQvrrBw6JgAyJ5c1GurZ2i2+/cUlKcmePKFV8SmVB10h/nOy4/qrz58S99Z37i4rO+ubzVNgMCx9Mn36uyrHyVfLANwXzmPaRj/6icwATKyKHY8tFdPzz44bGt+zxNkZIH/TfwJLxSw6+SJ5DcAAAAASUVORK5CYII=", "상추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADeUlEQVR42p2UX2hTZxjGf6dJ2rRJ29g2aWNOTlBpbUi3mAtNtzIs25juD+uFFxOhN94PxrAb7GoXDgYOBl64m+HWwW422BzCGGKlm0ybKskmxlpbxZw0bdKTxpw0ST35d3YRDNTaTnzuvuf7vh/vy/vwCrqWYSfNp+7oP4V/fOZdoViiWKxwdvxr4Yln3AmWzq/q86k5Ls1dbHg6UKlWMRkM5PIamWyRiXc+1p02p2A0GBF2qnB88pieXH+I5OhpeKVKhYVEEp9HbHi/Tf/L9GdTDIk+oWk72PAZn141ZPB73AQliaAkoW1oPEwq+DwiQUlCstm2/NvScjh+Qw/HZwlIbgadIgiwpKoo2RztZjMvu110d7SzpKoksyqrag6A769OMjIwojdtBc7y7d/nCHjcHJL2IdnsJFSViBzHam7B7xYROztJqCorag6lAfyBX29eYPuWJR/315a5GZsnGlvi5GuvctR7gMDufgCisSUAfB6RsVE/HVYzwGbg+OQx/fbKn4wF/OzpGkLO5inpNcYCft73jSEIZsJLi1wI/8Nep4NBZy9DfX2bCtkEXFi9C3qZgOgllU+zrj3GbGolIHrJa3liGYWF1STlWo3dnZ10tbVhaW7eHgjgtkm80f8mVxanyGvr2C2OxnnqbpjQg3qMBux2ui2W/59ypphkLhUiJMucODCCoQm+u3GekCzT0trCkEck4HIxLPmYkRcIyYubcijoWgZ145F+dvorcqXbtDWbaW+1oFU22NvtoFgqcy+dpKOlhQH7fhzWHipVhfNXrqEUciiFHJ++9TlHXzqCzWKrB3ujtMGluYv09zowmZq4v5bEbrWyVsihFFS0So09XX0MOjzst3uoVpq4k8iiZGtQtnJ8+APBZrEJjZZNRgMDohMAh9WKw2qtLwZFoa99FycPjuLtDXL1wV/8Hr3MmV+mSJ9LCs+Km/Hp7D3RjBzlRGAErVJmRo7y+ukv60Prdm8LAzBGEtd0+dE93vOO0mNxUSzlKJbXicTiJNbyVGtV1oo5Pnn3FACdbR07rjvjreVZoqnrfPH2R/UpF1bqQDkOxBsPv5k4JfAcMgZcrxBZnmYuFcLbGySyHOPnW38wMxF9LsDTEqqP05y+/KFeKKUwGy0M9QUZ9hzBbdv3YkBdy1CplZmVp/XI8nUOug9zyH34hWAA/wHAsnsuPUTVGAAAAABJRU5ErkJggg==", "무": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAC6klEQVR42p2UzWtcVRjGf++9d+bOdWw+xkzamCGBEIytoGIXyULHUopSKC4UleLGTVYFdacbbaEiwYWIH/0PXFkQKTQlXRREmglKY6OkNU1amoxNQ9LcZNI79965H28XacViUjM+u3M474/nPc85r2i4SjNaD9f01G9fAvBS6QAvdh+QC/PntVw6KKZhYtGk/Njn3I0zFHLC41mT/rYB/fyXj/hi9Dk99dZnGPxPffLyYySc5e0zRzj8tLBwZYHK73805/DO2Pf6158/Q3Fz3d8Bb2SFkU87OT/yDc/09ol54uMPdwSLqtOqjbuYeQfHdvhpYYmZ1YTbfsKyB5FncdcLT8hOQ/HGT6tZKGDYNtHiIntHv6WtGNJeDAG4eaHAwafK/91y4t7S4OpFpDyMWZ/D9JcQy+LK4WN8NTHJ1z9OPnT+kcBwpqKJlYMXXsfemCLOdpLs2ktWp7F27+a1tg72Oe30Hz8JQIuT3x6YuLc2Ybk8pi1ow0Y0BW2gaUpjeYVia4Fd+wfp6e2TB3XbPpvg6kW0+1mMJ/uxvRka+QEk9cl4c6Sehzs+gd3VTc+x9+Sfdf8KJbp9TRs3LiPlYeyNKdSwaeQHcNYqJF6dyHVZHh2j54MR2crIQ8Bw7ldN7RZSp51si0lq5hFNkdRH3Jt412aJ3BpO3/Pk9+3fEni/ZUXDOvH6CioGRmcvRlxDDQfFxPSXiFyXyK2R1KNtYX+nrKFP/dJZlfIwVlAlU5vEbxvC3pgCf53E81geHeOJV958JAxAgukxjddXkMGjOGsVolyJOFfCWasQ1zYI5hdwxye2vbMtHaIJVlAlypU2N4MqqR9Qn50jjaB16NCO/7shIojGZIIqca6EikkmqJIGAd7sdWKvQevQIdkp0Eokj3vpMpk9e3CokAYhse+zePoHut55n0yxS5qZSKLhKuHivN459x1imqApmirFI+9itXeIWJmm5qQFYHf1SMvgq+pfnwZVgKadPdA9m61K4WfAvgoAAAAASUVORK5CYII=", "옥수수": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADvElEQVR42p2UTUzbdRjHP7/23zegLZSWFkpJy+uA6jDg2yK4jJmwg5nRxMTDTDi4Jbpkt2lMPHhQF+PBXUzERHbi4Ex0MYgucxCyA2STF0fDQnkLb0IphUILff95qIAV8OD3+OR5vr/v83y/+QkZD/F/MDNwVQIIocLsOkdx5WsCQDlpYDm8KgH0Gh3FeUUCIBULkU5GJcD6VA8qRYOi1bG1+CMafZk0OpqFOElh5Y02CfBKTStfv/GJ2Fe1PtVz0GOr8VLedAaA+1/e4VTHx6j+TdT96LasvNEmL7/6LMUmA6H5Xoa6LHKoyyIN5mWeuvg2Vm8tADuhJRYnBw5ml8b6cle++aBbLuzO0FxbdlDTGwtxNNgASEQjBGcnMVndKA1GwmthVsY2iSyNEtvZo8AucxXefNDNQmSa5jrnIaGpkNLGZkobm0lEd9iYmcRsc1Pa2IxMF7EytsWTe2PEI3v8pyldPz3kU9M07u0Yo7cHsXpriYZXSSVjLE4O4Ko/S1lTEQXlHh7dmqPjo98odHmFAhCIBGXnd9d5va0Ri6UQm90GPMTzQjtlyQ2Wx4ewe1qwlSfZ24ow3DOI/9c7WKp0FFfrc4SoAJLpFJOBaazmPIz5erQ6HcmICin2OyCVjKHoDeiNhYhMDKGJEY/ssbkQxdl0AY3BdEh4HHZXtISWZtjeWABgY2mCeHQLlQZKqtNUn7NnA34/QOu7t0S+teJosJ2eyhxSu6eFamcePA8/vN8NzKFoJeVPQ3Biit2AClDnzCgAmbRgd1VzROX2+jw7BhNGSzlWdwpdkRmVRktwZoPvbQ4SGkHCJvi99zMJ4LXX/K0wA8nt7EuZTIZMOp0lDKwR1u6hwkyBVZIu0ZNQ57M4ssOIww4FQAGMPO6jpMCKRq0cjU0kHGZnaxMA/71V9sQ88AfuFvhmVs1gwgAVVVw+fzonYt1vfk59SbUQ7331oex93M+Vd07h9FQyNuVj3O9jtE+XvUl+mnxnEoCXmzzUuawH9+4fnmBg2MfsB4Mi54b7GJvyMe0P8qdfzZkXSwDQ5SuYSg0AuB1FGE15APQPT+BQO7n20nO5piiqQ5fG/T4C82pWpxUuXczGQp+XR7HdccSwgeG7dLY0cO18p/hnXch4iMXgmmy6folnLsRxWUqoc1QcidDy3Cw//7KIz7eVzeW3d8Vx+RUyHiKVTvNkZV52fHEFjaKgU7RotdqcxkQiwdX2tzhbn13R66o6llABUNRqvK4q0V7bKjMZeeK3f9pVfyLRPv4CvJxhDuI52sMAAAAASUVORK5CYII=", "애호박": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADC0lEQVR42p2UP2wbZRjGf5/P5/Nnx3/q1KZp0oSUpEkEQlU7VAhVTaESokuKYAidKpCYUDfGSiB2xMCEhMTGAAKxREi0Q4UqNQtxh5CWEsBtHf8rZ5/tO9/Z5/sYTEODE6Hk3T69en969L7P8wnlmRy0bq79qH5au8Gp2fNcPPuaEEaG8EFhxcqWulfYYGX1W7785nsWplcUIA4MPHflAtkpjYnn49TqDq7vAhDaL+hRqagmz86q0SM94sn+UH9fCtfurqr8xhoAna5AaweESl2UJ0CJ/QN/vrvK9ds/DIA9AVZAv9OHrg5qnwrf+fCSyh5NM/fiMaSMcP3GOh7QAKCHCtT/A7+7/YV6VH7I47LFqxdep9kp0e07zE6dIpVL0DRtmnUbgFjMGAb+unVHPf1uehZe4OKHesRH4gRaGt+Pkk4f4pmxNDKqI2UEp+WihXbZ4de3Pt+hcG76NIdHJ+AENB2TETlKJDxQImMRNC1EPCHZXC/uvLJlm+qzlWucXDiHocWQegqAllfDcqqUzfvMjJ8ZbMv3KFTyzIyfoVz7k7JX2Gmb/B+3VKH2G5Njc8T0FEY4hjQSAPRVF6UgSA/8ZtlVvK5NLn2cSn2TSrVCtVTn3UtXyaSyA2M/fPw794p3SCezRLQYkbDE0KMYepSIJpF6gmQ8S8/3cFwL220gjSRWu0azadFqOLx88hURlyNiOylKBbRdCwAhxK4XL1Ty2K5JP+hSqORx2h69rj+clGqxTuF+hcmJeR6Y66RklpTMDe0QIJc+TlRP8MvmKpvrRZYWl1laXN6hIAQgEBi6BMDt2VidKq7fot4u0+05ZBLjANhunYZdBmBpcZn5Z18YVqiFNIQYAL1eB8938HyHpMjQsEvomsHY6AnMVhHbrRP8k4j/KntSQnkmfzWq6oNP3+PNty5vN/IbN5HxgdcA2s3B95SKZ3j/4se7w4zMANjv99mqPVCffPXRdrPj2YRC/84FgeKN829zeuElDifH9gSGATRN49iRafHc0XmllNoz21O5mT1hT+pvjZRP8vwgekgAAAAASUVORK5CYII=", "오이": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACkklEQVR42sWUsU8TcRTHP7+7a0u1KaCQGjAECA5IgoMkJYbFGBxMZDEObiYa+QcIcdFBo4mr0c0omzrgoIkDJLho0sHUKAYTCVpFBRqkLS0t17v7PYdD2kpQcfFNv/fe7z6/977v5ZTYK/yLfV1OS7Ufa9yrLNNE/Suw4+zJGuDTKzfpbutQOwZ+XU7LwMg5on3RzZhqd8lPlhjsimPtBDaZTEhi7i2hgwFo0LCuYF0hWQM8hQgYOwFOJBPce/aYuoMBVIOGuo2uswZ4/tHaiWbhviD1Q2HCbYrih4qExXkb7fj+HzVMvHsjV+/fIX10AddWiKtQQdApEzfn4eQ0zqLNreFRDrUf2L7CyWRCAF5/m+W9+5nGSAjlgS6DZBVuViMOGJYCV+iMtbK/Oaa2BV64ec3XpMVk95EQ5aWNhAbSJuXvNoGoSagpgJ0qVSZe3XL1bkX7otDiYjVAaJ+vmSwb6KxifaHsswsues3j49gT9fM7CyCTX5XrD+8S7gtuqVTbYKd9mPtd4+X9N72cw2BvnOO98Zr7Via/KnNLXxhPTlE/FEa035Z8EfAU2ha0DTqr0GuCtjXiCa2RJvq7ejg1cExVA9XI7csynpwieiLMrk6FkxGcjJ+UbyaU1eZqBPdYGJaiMF2oabOmQgBckJRFEXczISmL0mIZcSr7VvpYojXSxPTYfbXdMGumXP6kK07OxQobaEvwShpdcBnsjdPf1fPbvbUsw9x0nM/VPxCPulgAFdgArnkc741v0WwLcPBwPw+eT1Cct/1AxCTYaFGctynMrIHrP7KdZr+aEnuFl7MzcvrGRT9ggDIV2hFuDY/SGWsFoLut4++BAI9eTMnkqwRaV9q+dOY8+5tjiv9pPwC7yDHH8BocswAAAABJRU5ErkJggg==", "양배추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEDUlEQVR42n2VW2xUVRSGv31m5sycTjs3eloYmNaGttFKvUQkSEJ4wMSGhCABH8AHiRoSJVHUB2M0wfgAxkD6YDQKUdD4IDEmoiIQjSSAKNi0KBMqlFp7n3Y6nU7ncmbObfvQSOVS1uPeWX/W+rP/bwtZmWah+vTyR3KilAJgakwDIFoV4q0nXhAL9XhvPShZBWbNvAS4kPqJ/uwApbKA9CIMxyJWHWNHdrMEqAkECWs14q6CPwx8K9/vPgDA+mZQXR/HkhpDb67gx4m/+C01yJrObQA8t3orezbsuqlf/H/ldV8+Itc1etl8r5+zYyUe1gMkBxX2feehqW2WV9e8x+rEao5eWcfXlyW5jMr0RIChd07fmFIBKFgFjiQ/lh3LfSTCgsG8RUONj99HbXpSzh29uq8Oli5yiOgVOk8fkenCtJwXNPPycPIgHc0qerVgKG/RWOOja8yhe9y+o2BbvSBR5xDVK3Se/ox0YXp+wv/q7FgJgLXxKnafKnLxkkaTX+PYKw5b2gWD+dc5fn07zz/Uv+DL8DQ8GZZf9H7Ag0tneCyuUXEk/TMmf6Qk+axKwXbpK5XZ2BLAdCQuHlbqS7mYOkFrzMv6e1R6cgY/J5P8kx5/W5kopRjJD7A86qVsu0wVXfoyLsVZL6rm4NdsXOFStl00ryCqOrhWkkUBD0jBtCGxTYXrQ6MMjU/OrawqgraYn96sSc+Eza9DMDlSRShm0tRgsqZR0Js1CfoUlocllfJ52mJ+RnLwyaUKkyNVVEb9uFkv3qkxjb6rQc62FFkbr8I1Lf4cN+/oz7UZk8G8hV3/N7tPFcmm/cykQ9h9GqVUGSNuzk3oUwStEZWr2QrRoGT7CvWGSLVPoTWi0jUs6RqWdI+6XM1WSI8GiIegY5Vxc/SiVSGWhHQwJsnZFhHVw7JqD9ISOKaCtMEnFNJFMCoCnwfuX+ygWAHCqk0i6uLaLotra9GjkbmkjKQn5aqXdnD8wwInr5uc7LfoO1aPp6FMsNakPmGwpV1w4kKA4UkPOzcWATh3Jsi5M0EKwwa/HD5Ee0uzuCnLmzo9RHSFqA6FYQPN9ONmfJTyPvZfgdq4QaLFAAT7j9bgZm5DwZyHoWCQ17Y+jZvxYkz5yKb9BJrAMW3s0nz04iFIhATnkypuxos9A2bO4o1nn6E+FrsdDvFtG6SI2Hh0C4D8RVACEHxg7r5jlUGizuHQ99XYfRpm3sacsZg9Nw8HcStgD534Ru75/OAcG1NlhFeg1fpp2TRBqjtEbsBPabwCwItPbeXdl3eJBfEFMD2bk+PZDAA7D+zj2sAgVsHGH7axSh7qwjpf7d0LQG0kzBJdvztgY6GwiIXCADy+8lHZvGQZ5uw8cfRohPaW5gW/gH8B8BjM5fIq3WIAAAAASUVORK5CYII=", "레몬": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACI0lEQVR42p2Tv28ScRjGP8cBd7UES6CNpvgrxmIaHZxMsIndYHJgMGmXJib9G/ofGDdWBx2cSBOnbqaLDsYwlKVNY2oKgXwJ1kKvcKX07r5wDsRTCtS0z/Z9v2+e93mevK/iWkdcFtIUrpQuXQmT07cUAD9XwP56klrFofzDZiXXAEC5SNFJ+ZNb3VwdqieW13COt7Eb3/j4WvDizZfRihqFrAvQs0qEZ3UA1Mm7+LSo13N23OZEdLz3SKJ6IQuAHgkQmwsBEJx+SCCc8HosU9Kqno0mahSybr2QJf40gh7PoGqxgQE9x6RTySHyBqJoI0oOK7nGcNg+LdxXEs/gm3oF/pn+h/kOgK7T42C7NTJP/7/Bdtt76JEAaigJ/tugTnmNXatOr3OAqvlwTrvjiaqbq4RuaP1MJl8O705zB2nuEZsLIfLGeKLz6OymUZQ2+s0UANrMIr5rTyhuvL3YGoA6ESc4/RhONwhMPcC1f2L9+ow2s4jT+o5tlPsLuWsRTaRZSKX/5jsQdjBCIJyg1/6KOhFDCVxHmns4J01so4xl7ANwWJPosXnuP19SRiryBbW+rUoOPZ7x6uPsDFiTpnD315Mklte8osgbkH8/eF+7Foc1CeDtziCRdBFFm3tHW1gtB8uUiKI9NDGaSDP7bH68oq4EUXJwjC3atTOalQ6i5Aw1LqTSA5mch3f9H5ai7p/iKOn/g0dklHc8osidR5cm+g1obufWnCf8bAAAAABJRU5ErkJggg==", "고추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACe0lEQVR42q2US0hUcRTGf/fOnYfNMKNOI42vEntjT9soRhCYkIuilYs2unARoYsgooVFSAgWobZqUVsjgqCNq4bMohgJJCbLSM0ZNV/jjPO6d+7MvS2MARsZR+lbnnM4/+873zl/gb/QlSD54sFonx5a0Fhb0OhvuyEACOZiACR2gOHZt4RnTIT9xqzcjhrW76+iof4CDa4m4d+cyH/GthhGlKj+1PuCqdQKNdYEuLJrtsVwTY7SN/KMqeUgq/HEpjVCPi4/3FOtf7laSvCAlXN3fnD/YjVmZwqLM8XkreH8Xfa//6h7uro5bItw8nUAgygRs0WwVSoc+xqlZihGc0mb/vjy3Qw5KVez3553SGM+yvaZsUcFjLLGXFrgzEKYikUF15LKTOwXSU3d2hRPVzfSmI86WcNdsT79VCJNaiTF9TcB5mUz81hwu61IkpifKRaXCXejMyu+b9ZKYcQEwK5r3xADcm6GQ5039fKpAE5Ry8TiszLxYJLlQoXpRAGToshPTaCjvwdXeWnuhr7nL2lMa5QUGzNSlWWV+IrCSkmaCVUkZHeAw8H5litCXntYdMpO4VEbAEsjIeTFJElNxBex49UN1La38mTUI+S8lMHeAX2wd4DOojBxr8K8agBguizGdLyAuaQJr2bg1eKEsOXpDfYO6P4Pn6gU1ucWsaZQVZ1V1URINhNIS6zZHbS0t+a8psxLlxy79UpBY6+gc9oRBiCkSkzGrQB81wSorNhU5qaXclZM4zbLuC0KAOMRG/60gXF9XXZHf0+WATklf9ZEjHIBUtIMgJIWOdRQx6N7twE2rEZeDY83N6Fp2obkwdoTVNUcEbbzI/0B9/r7klhR92gAAAAASUVORK5CYII=", "토마토": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAChUlEQVR42o2UPUxTURiGn9ve/l4KtIK2wYCGEAZIHGTQ1ISB2EQTRwZZZDbO7g6ERR1BBwKGxAESNxkMxhQSJdGEQMIgMWLSIjUtNxb7d3/OPQ7YQqUl/bYv58173nOe7xxFGjqNKnuUk26Xm0hbWAH4XcxLwza41HFRaaRXfBFcNKmH84958uZprX+2MsODF484r+rMFtfnZGIqLqv9x901ElNxmZiKy3dbb2u6xFRcLq7Pyf/N1EY7zK7OS8fzB61NpVCyAPBrKt6gwezqvGwp2SkzhJpHC6kUTBcF00VAU/EEK8yuzrd2zP7PgtszRq33q5JoSBANCQKek0BdzwsEP5lnIVRpvkpMyFg5R6yURQ+7yFsWh6bCXtELQG/QIuIRGIbDbsqP3RXBjoSZTi4pVZqqXa7wY21Der5/RQtKwhrEAhq6NDk0HHwlAUCkYqEpNgBFj83Pwyy5TJYvKx/k0K0RAEXJf9uRL2/c436vqMXtGRsCoJw9Qt9OHc9dwaBgnmjSppe06WOzYjGdXOLK9ZtK7c729BIi2knP2BDyzl1kKESgu71m3N3m43KHH4CNQoi06WsOoEvzEvS6j5vtLahUmlLr95UJuy2azlnIp6JKiV02Uff3AXCEg2PaWMIBQDjHRNvdgqLjBnHO0BZTOsWUXjuaoRfQt1Ok8/UpN0ttDROrp++sM+AhHPCw/36nTnQ1EjwDoKGZQHJgC9KmF1ORgNVQaAoHW0LG8p5jJiFjO//oGHil2VQspNKQ4pkXMHHhmoyqLmKqm1bqwBZkbIfXh1snL6C6OJ1cIrmwTHJhuSWz0clxRifHGwPoGx5UBuIjMvcr15LZQHyEvuHBul/3L4qXHYLCKFTWAAAAAElFTkSuQmCC", "고구마": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAB/klEQVR42uWSvWsTcRjHP7lcbDSx1hBLolJKW2gigQwpghahg6iTQkBwUnBxExQF/wEnXwY3EaWDgy8ggqCV0sWiQ6Q4iFBiind5MU0MuebuEnNJ7n4OpYGYiJ31GZ+X7/P9fp8H/tlwCau6rcZy+rPQS4W+/NSxUy4AebsbV54/4svrp335a++//51RZnlBvLxxEYDjZ08zHT+EkUujKwrFUpP1koVaXOPC/OJgRm9uXhEAHtvk6FwCgBGfRL2Uo7yaweuV2SnbBLwWyzWblvObNMvUhWXoKO9eIckyoXCQ6OEIHq8Xx7ZpahUalSqeUADZ1cG3w6baFNiO6AVaefaADw/vcP5SEv+BSYz1Et+WFpmYO4KlabRNk8DBUSpK8c9Xuz27X8QTUeIzUfZMxABo13UapSy6ogDQtGw+fvpBNCRIqTVSqs7jTHnzag1dFwvz94lMhvFJDpqSY2jvKC3DwP7ZoF2voeZNdg8JZJcg6N8EGY7MkDyT6DKSGnqNF/duEZkK45ccNCWPpZUxsmuYBRVrY4Ns3qRaMWmZdfb5IaXqDE8nSF6+7toC6npUUYrsGvETHA93pViNJkZZYymd6/FjS06PR516mcLXVXH33Ekkt4TkdneLjuPgdGyuPnnbMzQWjfUByW5ZZiwac43PnhDCcQY+5qDB/yh+AfB06RLNtmpNAAAAAElFTkSuQmCC", "키위": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAADV0lEQVR42pWUXWhbdRjGfyc5+Thp0nycdU0XOW02s+LokG3ejG4FJ5RRvJjeKAwnMhHnjYLojXjjpoKwC5EhDjY2ZYqgvdGbsUmRzkod7qPDTSw1a5YladJ8n+PJyc6HF2F12TLF5/J5eZ//877/930Fx6hwL1qq6uhqk6YkdPFKON5N9IB4PzE7fYZzp4/zyZS/i9ff/In/Jfb2Uzuc+ZTIL1N+JhUf2+Jxgl4vANLRcQdgOBzn95e/7elScIwKLVV1ZqfPcOnCd1xNGCwkDJ5UZLJNC8N2uhJ87gBPDE3yzs6DDwi6AHS1ybnTx5E3bSAxFGZTWGQ4HOZKqclMpsJMpsIeRWaPIrNFFjkyd7Jnma7/6sPkiMLyoYMATP9R4OS1LId3pZCOjjvv/3yiy7Zw9rMPnOvzPyLG3JhtnXRC52aixW5F4djlZdYHJF55PMn4I6PUDZNbTZW3ZmZ4NhUn0xTJNNzMHzglALhqxQLF5TRurwuX242kuYjkOy8lwwECIszdXiEmBUlGImyORYn4PAwFfWh3aiyUFrvLdGwbvVYnEI0wWJZ4dL5T/dTGATZGAnx5I7+WEPS42b9lQ++eDY6NkJzY+kBgNpNBbbd5TA5yeFeK4U9P8Mb57zn751UObJ3g3QsdR3f7t1BadMRGdpXVxRyR4XXUbhVxbAtvyMvIJYP8tjqBmJ9EKMQzqUFW9TZf3cgylzN6O9NrKmqxhleS0KsqlmnikTysywi0VluojRYt02T7YD+247BYVTl/M03EJyIK0DLNh6/TvRi7LlEt21y0cuxWFPYmB9ibHFiLL9frXMzlujegWsg7H+5/ms2TO2iuVFFXqvSt70Ov6AguAX/Ej1bUSG+3KSv/PLZUN1mqWzz3RYP3vv6m25mhqljt9kOdRvICXtWm/ZeBLyjhlC38FYN9rx4iLMv3i2mY/yIWzQuEs6CVDELxAP6iRaxksO/z14S1OYvGh4SPfvhVAKgWNZZ+W0EratimTauhU1jIds5QXaNRqFMst2kWqky98BKnrlwTunp2F6XbacdsW9xpWxx58XkAPG7o87uoaTaOZdMvD/D6x8cQRYFQVCYUk4WevzmQSK4FxnZOOAAeUSAguak3OyPQH4uhjI72vGd/AxiKZiOa4Zu5AAAAAElFTkSuQmCC"};
+const JOBS={
+ '농부':[
+  ['농부 작물',['양파','상추','무','옥수수','애호박','오이','양배추','레몬','고추','토마토','고구마','키위']]],
+ '어부':[
+  ['물고기',['송어','고등어','우렁이','강꼬치고기','피라니아','깃대돔','해마','오징어','날치','거북복','개복치','배스','연어','비단잉어','쏠배감펭','쑤기미','왕게','해삼','철갑상어','청새치','복어','실러캔스','바다거북']],
+ ]};
+const GROUPS=[...JOBS['농부'],...JOBS['어부']],ITEMS=GROUPS.flatMap(g=>g[1]);
+const jobOf=m=>JOBS['어부'][0][1].includes(m)?'어부':'농부';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('ko-KR');
+const icon=m=>ICONS[m]?`<img class="ic" src="${ICONS[m]}" alt="" width="28" height="28">`:`<span class="ic fish" aria-hidden="true">${esc(m[0])}</span>`;
+const ago=t=>{const s=(Date.now()-new Date(t))/1000;return s<60?'방금':s<3600?Math.floor(s/60)+'분 전':s<86400?Math.floor(s/3600)+'시간 전':Math.floor(s/86400)+'일 전'};
+const left=t=>{const s=(new Date(t)-Date.now())/1000;return s<=0?'만료':s<3600?Math.ceil(s/60)+'분 남음':s<86400?Math.floor(s/3600)+'시간 남음':Math.ceil(s/86400)+'일 남음'};
+
+const LS='market-v1';let P={};try{P=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){}
+const saveP=()=>{try{localStorage.setItem(LS,JSON.stringify(P))}catch(e){}};
+const V={job:['어부','내 거래'].includes(P.job)?P.job:'농부',item:'',sort:'cheap'};
+const H={from:'',to:'',who:'',q:'0'};
+const UNITS={'낱개':1,'세트':99,'셜커':2673},UN=Object.keys(UNITS);
+const curGroups=()=>JOBS[V.job]||[];
+const curItems=()=>new Set(curGroups().flatMap(g=>g[1]));
+let posts=[],trades=[],loadErr='';
+const A=window.Auth,sb=A&&A.sb;
+const I=()=>A?A.info():{configured:false,user:null,member:false,roles:[]};
+const me=()=>{const u=I().user;return u?u.id:null};
+const isCook=()=>I().roles.includes('요리사');
+const sellJobs=()=>isCook()?[]:['농부','어부'].filter(j=>I().roles.includes(j));
+const per=l=>+l.price/UNITS[l.unit];
+const qtyTxt=(q,u)=>`${fmt(q)}${u==='낱개'?'개':u}${u==='낱개'?'':` (${fmt(q*UNITS[u])}개)`}`;
+const unitPrice=(p,u)=>`${u==='낱개'?'개':u}당 <b>${fmt(+p)}</b>`;
+if(!sb)$('setup').innerHTML='<div class="notice"><b>아직 데이터베이스가 연결되지 않았어요.</b> config.js에 Supabase 프로젝트 주소와 키를 넣으면 글을 올리고 볼 수 있어요.</div>';
+
+let gateOk=true;
+function gateUpdate(){
+  gateOk=!sb||(A&&A.can('member'));
+  $('gateBox').hidden=gateOk;$('secTop').hidden=!gateOk;
+  if(!gateOk)A.gate($('gate'),'member','요리 재료 거래소');
+  applyView();return gateOk;
+}
+function applyView(){
+  const mine=V.job==='내 거래';
+  $('tiles').hidden=mine;$('tileHint').hidden=mine;
+  $('secMain').hidden=!gateOk||mine;$('secMine').hidden=!gateOk||!mine;
+}
+const liveLines=p=>p.lines.filter(l=>l.qty_left>0);
+const shownLines=p=>p.lines.filter(l=>l.qty_left>0||(+l.qty_pending||0)>0);
+const isLivePost=p=>shownLines(p).length>0;
+const myPending=()=>trades.filter(t=>t.status==='pending');
+
+function renderTiles(){
+  const low={},cnt={},jc={농부:0,어부:0};
+  posts.filter(isLivePost).forEach(p=>{const seen={};liveLines(p).forEach(l=>{if(!ITEMS.includes(l.item))return;if(!seen[jobOf(l.item)]){jc[jobOf(l.item)]++;seen[jobOf(l.item)]=1}cnt[l.item]=(cnt[l.item]||0)+1;const v=per(l);if(low[l.item]==null||v<low[l.item])low[l.item]=v})});
+  const u=me(),live=u?myPending().length+posts.filter(p=>p.user_id===u&&isLivePost(p)).length:0;
+  $('jobs').innerHTML=['농부','어부','내 거래'].map(j=>`<button type="button" data-job="${j}" aria-pressed="${V.job===j}">${j}<span>${j==='내 거래'?`진행 ${live}건`:(j==='농부'?'작물':'물고기')+' '+jc[j]+'건'}</span></button>`).join('');
+  $('cats').hidden=true;
+  $('tiles').innerHTML=curGroups().map(([g,list])=>`<div class="grp"><h3>${g}</h3><div class="tiles">${list.map(m=>`<button type="button" class="tile" data-item="${esc(m)}" aria-pressed="${V.item===m}">${icon(m)}<span class="t"><b>${esc(m)}</b>${low[m]!=null?`<span class="has">최저 ${fmt(low[m])} · ${cnt[m]}건</span>`:'<span>글 없음</span>'}</span></button>`).join('')}</div></div>`).join('');
+}
+$('jobs').addEventListener('click',e=>{const b=e.target.closest('[data-job]');if(!b||V.job===b.dataset.job)return;V.job=b.dataset.job;V.item='';P.job=V.job;saveP();applyView();renderAll();renderForm();if(V.job==='내 거래'&&Date.now()-histAt>10000)load()});
+$('tiles').addEventListener('click',e=>{const b=e.target.closest('[data-item]');if(!b)return;V.item=V.item===b.dataset.item?'':b.dataset.item;renderTiles();renderList()});
+
+const btn=(act,id,label,cls='',extra='')=>`<button type="button" class="sm ${cls}" data-act="${act}" data-id="${id}"${extra}>${label}</button>`;
+const nickCopy=n=>n?` <button type="button" class="ghost sm" data-copy="${esc(n)}">닉네임 복사</button>`:'';
+function lineRow(p,l,focus){
+  const own=p.user_id===me(),cook=isCook()&&!own,left=l.qty_left;
+  const pend=own?trades.filter(t=>t.line_id===l.id&&t.status==='pending'):[];
+  const buy=cook&&left>0?`<span class="buy"><input type="number" min="1" max="${left}" value="1" inputmode="numeric" id="rq${l.id}" aria-label="${esc(l.item)} 살 수량"><span class="u">${l.unit==='낱개'?'개':esc(l.unit)}</span>${btn('reserve',l.id,'거래 대기')}</span>`:'';
+  return `<div class="ln${focus===false?' dim':''}${focus?' hit':''}">
+    ${icon(l.item)}
+    <div class="li"><b>${esc(l.item)}</b><span class="meta">${left>0?`남은 ${qtyTxt(left,l.unit)}`:'<span class="so">남은 수량 없음</span>'}${l.qty_total!==left?` · 처음 ${fmt(l.qty_total)}${l.unit==='낱개'?'개':esc(l.unit)}`:''}</span>${(+l.qty_pending||0)>0?`<span class="pd">거래 대기 ${qtyTxt(+l.qty_pending,l.unit)}</span>`:''}</div>
+    <div class="lp">${unitPrice(l.price,l.unit)}${l.unit!=='낱개'?`<span>개당 ${fmt(per(l))}</span>`:''}</div>
+    ${buy?`<div class="lb">${buy}</div>`:''}
+    ${pend.length?`<div class="lw">${pend.map(t=>`<span>${esc(t.buyer_name||'요리사')}${nickCopy(t.buyer_name)} · ${qtyTxt(t.qty,t.unit)} 대기 ${ago(t.reserved_at)} ${btn('cancel',t.id,'대기 취소','ghost')}</span>`).join('')}</div>`:''}
+  </div>`;
+}
+function card(p){
+  const own=p.user_id===me(),CI=curItems();
+  const lines=[...p.lines].sort((a,b)=>(V.item?(b.item===V.item)-(a.item===V.item):0)||(CI.has(b.item)-CI.has(a.item)));
+  const focus=l=>V.job==='내 거래'?undefined:V.item?l.item===V.item:(CI.has(l.item)?undefined:false);
+  return `<div class="it post${own?' ownp':''}">
+    <div class="ph2"><div><span class="mc">${esc(p.seller_name)}</span>${nickCopy(p.seller_name)} <span class="meta">디스코드 ${esc(p.discord_name||'')}</span></div><span class="meta">${ago(p.created_at)} 올림</span></div>
+    ${p.note?`<div class="note">${esc(p.note)}</div>`:''}
+    <div class="lns">${lines.map(l=>lineRow(p,l,focus(l))).join('')}</div>
+    ${own?`<div class="own">${btn('del',p.id,'글 삭제','ghost')}</div>`:''}
+  </div>`;
+}
+function relevantPer(p){const CI=curItems();const L=shownLines(p).filter(l=>V.item?l.item===V.item:CI.has(l.item));return L.length?L.map(per):[Infinity]}
+function renderList(){
+  if(V.job==='내 거래'){renderMine();return}
+  const CI=curItems();
+  const L=posts.filter(p=>isLivePost(p)&&shownLines(p).some(l=>V.item?l.item===V.item:CI.has(l.item)));
+  const by=V.sort==='new'?(a,b)=>new Date(b.created_at)-new Date(a.created_at):V.sort==='cheap'?(a,b)=>Math.min(...relevantPer(a))-Math.min(...relevantPer(b)):(a,b)=>Math.max(...relevantPer(b).filter(isFinite),0)-Math.max(...relevantPer(a).filter(isFinite),0);
+  L.sort(by);
+  $('listTitle').textContent=(V.item||(V.job==='농부'?'작물':'물고기'))+' 판매 글';
+  $('flt').innerHTML=V.item?`<span class="chipx">${esc(V.item)}만 보기<button type="button" id="clr" aria-label="필터 해제">×</button></span>`:'';
+  if($('clr'))$('clr').onclick=()=>{V.item='';renderTiles();renderList()};
+  $('list').innerHTML=loadErr?`<p class="empty err">${esc(loadErr)}</p>`:!sb?'<p class="empty">데이터베이스를 연결하면 여기에 글이 보여요.</p>':L.length?L.map(card).join(''):`<p class="empty">${V.item?esc(V.item)+' ':''}판매 글이 아직 없어요.</p>`;
+}
+$('sort').addEventListener('change',e=>{V.sort=e.target.value;renderList()});$('sort').value=V.sort;
+
+const dkey=t=>{const d=new Date(t);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const dshow=t=>{const d=new Date(t);return `${d.getMonth()+1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`};
+const hl=(txt,q)=>{const t=esc(txt);if(!q)return t;const i=String(txt).toLowerCase().indexOf(q.toLowerCase());return i<0?t:esc(String(txt).slice(0,i))+'<mark>'+esc(String(txt).slice(i,i+q.length))+'</mark>'+esc(String(txt).slice(i+q.length))};
+function tradeCard(t){
+  return `<div class="it tr">
+    ${icon(t.item)}
+    <div><div class="nm"><span class="tag">거래 대기</span>${esc(t.item)} ${qtyTxt(t.qty,t.unit)}</div><div class="meta">${ago(t.reserved_at)} 대기 걸음</div></div>
+    <div class="pr"><b>${fmt(t.price*t.qty)}</b><span>${t.unit==='낱개'?'개':esc(t.unit)}당 ${fmt(+t.price)}</span></div>
+    <div class="who"><span>판매자 마크 <span class="mc">${esc(t.seller_name||'')}</span>${nickCopy(t.seller_name)}</span></div>
+    <div class="own">${btn('complete',t.id,'거래 완료')}${btn('cancel',t.id,'대기 취소','ghost')}</div>
+  </div>`;
+}
+function renderMine(){
+  const u=me();
+  if(!sb||!u){$('myLive').innerHTML='<p class="empty">로그인하면 내 거래를 볼 수 있어요.</p>';$('hist').innerHTML='';$('hSum').innerHTML='';return}
+  const buyer=isCook();
+  let live='';
+  if(buyer){
+    $('liveNote').textContent='내가 거래 대기를 건 품목이에요. 게임에서 거래한 뒤 거래 완료를 눌러 주세요.';
+    const T=myPending().filter(t=>t.buyer_id===u);
+    live=T.length?T.map(tradeCard).join(''):'<p class="empty">거래 대기 중인 품목이 없어요.</p>';
+  }else{
+    $('liveNote').textContent='내가 올린 판매 글이에요. 요리사가 거래 대기를 걸면 품목 아래에 표시돼요.';
+    const M=posts.filter(p=>p.user_id===u&&(isLivePost(p)||trades.some(t=>t.post_id===p.id&&t.status==='pending')));
+    live=M.length?M.map(card).join(''):'<p class="empty">판매 중인 글이 없어요.</p>';
+  }
+  $('myLive').innerHTML=live;
+  const other=buyer?'판매자':'구매자',kind=buyer?'구매':'판매';
+  $('hTitle').textContent=kind+' 내역';
+  $('hNote').textContent=(buyer?'요리사로서 거래 완료한 구매 내역이에요.':'내 판매 글 중 거래 완료된 내역이에요.')+' 최근 90일까지 보여요.';
+  $('hWho').placeholder=other+' 닉네임으로 찾기';$('hWho').closest('label').firstChild.textContent=other+' ';
+  const all=trades.filter(t=>t.status==='done'&&(buyer?t.buyer_id===u:t.seller_id===u)).map(t=>({t,who:(buyer?t.seller_name:t.buyer_name)||'',day:dkey(t.done_at)})).sort((a,b)=>new Date(b.t.done_at)-new Date(a.t.done_at));
+  const w=H.who.trim().toLowerCase();
+  const L=all.filter(x=>(!H.from||x.day>=H.from)&&(!H.to||x.day<=H.to)&&(!w||x.who.toLowerCase().includes(w)));
+  const total=L.reduce((a,x)=>a+x.t.price*x.t.qty,0),people=new Set(L.map(x=>x.who)).size;
+  $('hSum').innerHTML=`<span>${kind}<b>${L.length}건</b></span><span>${kind} 금액<b>${fmt(total)}</b></span><span>거래한 ${other}<b>${people}명</b></span>`;
+  $('hist').innerHTML=!all.length?`<p class="empty">아직 거래 완료된 ${kind} 내역이 없어요.</p>`:!L.length?'<p class="empty">조건에 맞는 거래가 없어요. 기간이나 이름을 바꿔 보세요.</p>':
+    `<table class="ht"><thead><tr><th>거래일</th><th>아이템</th><th class="n">수량</th><th class="n">단위당</th><th class="n">총액</th><th>${other}</th></tr></thead><tbody>${L.map(x=>`<tr><td class="d">${dshow(x.t.done_at)}</td><td class="i">${esc(x.t.item)}</td><td class="n q">${qtyTxt(x.t.qty,x.t.unit)}</td><td class="n u">${fmt(+x.t.price)}</td><td class="n t">${fmt(x.t.price*x.t.qty)}</td><td class="w"><span class="wl">${other} </span><b>${hl(x.who,H.who.trim())}</b>${nickCopy(x.who)}</td></tr>`).join('')}</tbody></table>`;
+  for(const b of $('hQuick').querySelectorAll('[data-q]'))if(b.dataset.q!=='x')b.setAttribute('aria-pressed',b.dataset.q===H.q);
+}
+$('hFrom').addEventListener('input',e=>{H.from=e.target.value;H.q='';renderMine()});
+$('hTo').addEventListener('input',e=>{H.to=e.target.value;H.q='';renderMine()});
+$('hWho').addEventListener('input',e=>{H.who=e.target.value;renderMine()});
+$('hQuick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(!b)return;const q=b.dataset.q;
+  if(q==='x'){Object.assign(H,{from:'',to:'',who:'',q:'0'});$('hWho').value=''}
+  else{H.q=q;H.to='';H.from=q==='0'?'':dkey(Date.now()-(+q-1)*864e5)}
+  $('hFrom').value=H.from;$('hTo').value=H.to;renderMine()});
+
+// 판매 글 올리기
+let rowsF=[];
+// 지금 보고 있는 탭(농부/어부)의 품목만 올릴 수 있어요.
+function allowedGroups(){const J=sellJobs();return GROUPS.filter(([g])=>{const j=g==='물고기'?'어부':'농부';return J.includes(j)&&j===V.job})}
+function showAside(on){const a=document.querySelector('#secMain aside');if(a)a.hidden=!on;document.querySelector('#secMain .grid').classList.toggle('solo',!on)}
+let formJob='';
+function renderForm(){
+  const el=$('formBox');
+  showAside(true);
+  if(!sb){el.innerHTML='<p class="small">데이터베이스 연결 후 사용할 수 있어요.</p>';return}
+  if(isCook()){el.innerHTML='<p class="small" style="margin-top:0">요리사는 판매 글을 올릴 수 없어요. 사고 싶은 품목에서 수량을 정해 <b>거래 대기</b>를 걸고, 게임에서 거래한 뒤 <b>거래 완료</b>를 눌러 주세요.</p>';return}
+  const J=sellJobs();
+  if(!J.length){el.innerHTML='<p class="small" style="margin-top:0">판매 글은 <b>농부</b>나 <b>어부</b> 권한이 있어야 올릴 수 있어요. 필요하면 운영자에게 요청해 주세요.</p>';return}
+  // 농부는 어부 칸에서, 어부는 농부 칸에서 판매 글 칸을 숨겨요.
+  if(!J.includes(V.job)){showAside(false);el.innerHTML='';return}
+  if(formJob!==V.job){rowsF=[];formJob=V.job}
+  const G=allowedGroups(),okItems=new Set(G.flatMap(g=>g[1]));
+  if(!rowsF.length)rowsF=[{item:okItems.has(V.item)?V.item:'',unit:'세트',qty:'',price:''}];
+  const opts=sel=>`<option value="">아이템</option>${G.map(([g,l])=>`<optgroup label="${g}">${l.map(m=>`<option${m===sel?' selected':''}>${m}</option>`).join('')}</optgroup>`).join('')}`;
+  el.innerHTML=`<form class="form" id="post">
+    <p class="small" style="margin:0">${V.job} 권한으로 ${V.job==='농부'?'작물':'물고기'}을 올릴 수 있어요. 품목마다 단위와 단위당 가격을 정해요.</p>
+    <div class="frows" id="frows">${rowsF.map((r,i)=>`<div class="frow" data-i="${i}">
+      <select data-f="item" aria-label="아이템">${opts(r.item)}</select>
+      <select data-f="unit" aria-label="단위">${UN.map(u=>`<option${u===r.unit?' selected':''}>${u}</option>`).join('')}</select>
+      <input type="number" data-f="qty" min="1" max="100000" inputmode="numeric" placeholder="수량" value="${esc(r.qty)}" aria-label="수량">
+      <input type="number" data-f="price" min="0" step="any" inputmode="decimal" placeholder="${r.unit==='낱개'?'개':esc(r.unit)}당 가격" value="${esc(r.price)}" aria-label="단위당 가격">
+      <button type="button" class="ghost sm" data-rm="${i}" aria-label="이 품목 빼기"${rowsF.length<2?' disabled':''}>×</button>
+    </div>`).join('')}</div>
+    <button type="button" class="ghost sm" id="fAdd"${rowsF.length>=10?' disabled':''}>+ 품목 추가</button>
+    <label>메모 (선택, 100자)<textarea id="fNote" maxlength="100" placeholder="예: 저녁 9시 이후 접속, 셜커째 사면 할인">${esc(P.noteDraft||'')}</textarea></label>
+    <p class="small" style="margin:0">판매자 닉네임: <b>${esc(I().mcName||I().name||'')}</b>${I().mcName?'':' <span class="err">(운영자가 아직 마크 닉네임을 정하지 않아 디스코드 이름으로 보여요)</span>'}</p>
+    <p class="sum" id="fSum"></p>
+    <button type="submit" id="fBtn">올리기</button>
+    <p class="small err" id="fErr" role="alert"></p>
+  </form>`;
+  const sum=()=>{const v=rowsF.filter(r=>r.item&&+r.qty>0&&r.price!=='');$('fSum').textContent=v.length?`품목 ${v.length}개 · 전부 팔리면 ${fmt(v.reduce((a,r)=>a+r.qty*r.price,0))}`:''};sum();
+  $('frows').oninput=$('frows').onchange=e=>{const t=e.target,row=t.closest('.frow');if(!row||!t.dataset.f)return;const r=rowsF[+row.dataset.i];r[t.dataset.f]=t.value;if(t.dataset.f==='unit')row.querySelector('[data-f=price]').placeholder=(t.value==='낱개'?'개':t.value)+'당 가격';sum()};
+  $('frows').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;rowsF.splice(+b.dataset.rm,1);renderForm()};
+  $('fAdd').onclick=()=>{rowsF.push({item:'',unit:'세트',qty:'',price:''});renderForm()};
+  $('fNote').oninput=e=>{P.noteDraft=e.target.value;saveP()};
+  $('post').onsubmit=async e=>{
+    e.preventDefault();$('fErr').textContent='';
+    const items=[];
+    for(const r of rowsF){
+      if(!r.item&&!r.qty&&!r.price)continue;
+      if(!okItems.has(r.item))return $('fErr').textContent='아이템을 골라 주세요.';
+      const q=Math.floor(+r.qty);if(!(q>=1))return $('fErr').textContent=`${r.item} 수량을 1 이상으로 넣어 주세요.`;
+      if(r.price===''||!(+r.price>=0))return $('fErr').textContent=`${r.item} 가격을 넣어 주세요.`;
+      items.push({item:r.item,unit:r.unit,qty:q,price:+r.price});
+    }
+    if(!items.length)return $('fErr').textContent='품목을 하나 이상 넣어 주세요.';
+    if(new Set(items.map(x=>x.item)).size!==items.length)return $('fErr').textContent='같은 아이템을 한 글에 두 번 넣을 수 없어요.';
+    $('fBtn').disabled=true;
+    const {error}=await sb.rpc('create_post',{p_items:items,p_note:$('fNote').value.trim()||null});
+    $('fBtn').disabled=false;
+    if(error){$('fErr').textContent=friendly(error);return}
+    const first=items[0].item;rowsF=[];P.noteDraft='';
+    saveP();V.item=items.length===1?first:'';
+    applyView();renderForm();afterAction();
+  };
+}
+const friendly=e=>{const m=String(e.message||e);return /[가-힣]/.test(m)&&!/violates|permission/.test(m)?m:/JWT|auth|permission|policy|violates/i.test(m)?'권한이 없거나 로그인이 풀렸어요. 새로고침 후 다시 시도해 주세요.':'저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.'};
+
+const ARM={del:'한 번 더 누르면 삭제',complete:'한 번 더 누르면 완료'};
+document.addEventListener('click',async e=>{
+  const c=e.target.closest('[data-copy]');
+  if(c){const t=c.dataset.t||(c.dataset.t=c.textContent);try{await navigator.clipboard.writeText(c.dataset.copy);c.textContent='복사됨'}catch(err){c.textContent='복사 실패'}setTimeout(()=>c.textContent=t,1400);return}
+  const b=e.target.closest('[data-act]');if(!b||!sb)return;
+  const id=+b.dataset.id,act=b.dataset.act;
+  if(ARM[act]&&b.dataset.armed!=='1'){const t=b.textContent;b.dataset.armed='1';b.textContent=ARM[act];setTimeout(()=>{b.dataset.armed='';b.textContent=t},2500);return}
+  let call;
+  if(act==='reserve'){const inp=$('rq'+id),q=Math.floor(+(inp&&inp.value)),mx=+(inp&&inp.max)||0;if(!(q>=1)||(mx&&q>mx)){if(inp){inp.value=Math.min(Math.max(1,q||1),mx||1);inp.focus()}return}call=['reserve_line',{p_line:id,p_qty:q}]}
+  else call=[{complete:'complete_trade',cancel:'cancel_trade',del:'delete_post'}[act],{p_id:id}];
+  b.disabled=true;
+  const {error}=await sb.rpc(call[0],call[1]);
+  if(error){b.disabled=false;b.textContent=friendly(error);setTimeout(load,2200);return}
+  afterAction();
+});
+
+function renderAll(){renderTiles();renderList()}
+// 전송량을 줄이려고: 판매 중인 글만(market_feed), 거래는 대기 중인 것만 받고,
+// 거래 내역(최근 90일)은 '내 거래' 탭을 볼 때만 받아요.
+let hist=[],histAt=0,loading=null,again=false;
+async function load(){
+  if(!sb||!A.can('member'))return;
+  if(loading){again=true;return loading}
+  loading=(async()=>{
+    const wantHist=V.job==='내 거래';
+    const since=new Date(Date.now()-90*864e5).toISOString();
+    const [f,t,h]=await Promise.all([
+      sb.rpc('market_feed'),
+      sb.from('market_trades').select('*').eq('status','pending').order('reserved_at',{ascending:false}).limit(500),
+      wantHist?sb.from('market_trades').select('*').eq('status','done').gte('done_at',since).order('done_at',{ascending:false}).limit(2000):Promise.resolve(null)]);
+    lastLoad=Date.now();dirty=false;
+    const err=f.error||t.error||(h&&h.error);
+    loadErr=err?'글을 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.':'';
+    posts=(Array.isArray(f.data)?f.data:[]).map(x=>({...x,lines:(x.lines||[]).sort((a,b)=>a.id-b.id)}));
+    if(h&&!h.error){hist=h.data||[];histAt=Date.now()}
+    trades=[...(t.data||[]),...hist];
+    renderAll();
+  })();
+  try{await loading}finally{loading=null;if(again){again=false;load()}}
+}
+// 실시간 알림: 바뀐 줄(남은 수량·대기 수량·내 거래)은 알림에 담겨 온 값으로 바로 고치고,
+// 새 판매 글처럼 알림만으로 그릴 수 없을 때만 다시 받아요. (전송량 절약)
+let rtOk=false,lastRt=0,lastLoad=0,dirty=false,raf=0;
+let kickT=0;const kick=()=>{clearTimeout(kickT);kickT=setTimeout(()=>{if(document.hidden)dirty=true;else load()},600)};
+const redraw=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;renderAll()})};
+function onRt(table,pl){
+  lastRt=Date.now();
+  const ev=pl&&pl.eventType,n=(pl&&pl.new)||{},o=(pl&&pl.old)||{};
+  if(!ev||ev==='RESYNC'){kick();return}
+  if(table==='market_lines'){
+    if(ev==='UPDATE'){const p=posts.find(x=>x.id===n.post_id),l=p&&p.lines.find(x=>x.id===n.id);if(l){Object.assign(l,n);redraw()}else kick()}
+    else if(ev==='INSERT')kick();
+    else if(ev==='DELETE'){for(const p of posts){const i=p.lines.findIndex(x=>x.id===o.id);if(i>=0){p.lines.splice(i,1);redraw();break}}}
+  }else if(table==='market_posts'){
+    if(ev==='INSERT')kick();
+    else if(ev==='UPDATE'){const p=posts.find(x=>x.id===n.id);if(p){Object.assign(p,n,{lines:p.lines});redraw()}}
+    else if(ev==='DELETE'){posts=posts.filter(x=>x.id!==o.id);redraw()}
+  }else if(table==='market_trades'&&n.id){
+    trades=trades.filter(x=>x.id!==n.id);hist=hist.filter(x=>x.id!==n.id);
+    if(n.status==='pending')trades.unshift(n);
+    else if(n.status==='done'){hist.unshift(n);trades.push(n)}
+    redraw();
+  }
+}
+let channel=null;
+function listen(){
+  if(!sb||!sb.channel||channel||!A.can('member'))return;
+  channel=sb.channel('market');
+  for(const table of ['market_posts','market_lines','market_trades'])channel.on('postgres_changes',{event:'*',schema:'public',table},pl=>onRt(table,pl));
+  channel.subscribe(st=>{const was=rtOk;rtOk=st==='SUBSCRIBED';if(rtOk&&!was&&lastLoad)load()});  // 다시 연결되면 한 번 맞춰요
+}
+// 내가 버튼을 누른 뒤: 실시간 알림이 오면 그걸로 반영, 안 오면 잠시 뒤 직접 다시 받아요.
+const afterAction=()=>{const t=Date.now();if(!rtOk)return load();setTimeout(()=>{if(lastRt<t)load()},2500)};
+$('reload').onclick=load;
+
+async function init(){
+  applyView();renderAll();renderForm();
+  if(!A)return;
+  await A.ready;
+  if(gateUpdate()){renderForm();await load();listen()}
+  A.onChange(async()=>{posts=[];trades=[];hist=[];rowsF=[];if(gateUpdate()){renderForm();await load();listen()}});
+  // 다른 사람이 대기를 걸거나 풀면 실시간 알림으로 바로, 이 창으로 돌아와도 바로 반영해요.
+  const busy=()=>document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#post,.buy');
+  // 보조 새로고침: 실시간 연결이 끊겼을 때만 60초마다
+  setInterval(()=>{if(!rtOk&&!document.hidden&&!busy())load()},60000);
+  // 창으로 돌아왔을 때: 그동안 놓친 변경이 있거나, 연결이 끊겼거나, 오래됐으면 다시 받아요.
+  const back=()=>{if(document.hidden||busy())return;if(dirty||!rtOk||Date.now()-lastLoad>5*60000)load()};
+  document.addEventListener('visibilitychange',back);window.addEventListener('focus',back);
+}
+init();
+}
+</script>
+</body>
+</html>

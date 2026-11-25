@@ -72,9 +72,14 @@ a{color:var(--acc)}
 .sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
 .sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="preload" href="fonts/do-hyeon-site.woff2" as="font" type="font/woff2" crossorigin>
+<style id="dh-site">@font-face{font-family:"DHsite";src:url("fonts/do-hyeon-site.woff2") format("woff2");font-display:block}</style>
 </head>
 <body>
-<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html" aria-current="page">강화 기대값</a><a href="alchemy.html">연금술</a><a href="cooking.html">요리</a></div></nav>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html" aria-current="page">강화 기대값</a><a href="market.html" data-need="member">요리 재료 거래소</a><a href="cooking.html" data-need="요리사">요리</a><a href="alchemy.html" data-need="연금술사">연금술</a><a href="admin.html" data-need="운영자">운영자</a></div></nav>
 <div class="band">
   <h1>강화 기대값 계산기</h1>
   <p class="sub">기린서버 생활 도구(낚싯대·괭이·도끼·식칼·곡괭이·막자) 강화에 평균적으로 드는 쿠키·정수·보조 아이템을 계산합니다. 확정 돌파(누적 정수)와 하락까지 반영합니다. 수치 출처: <a href="https://giraffemc.com/wiki/life/enhance">기린 위키 강화 문서</a></p>
@@ -147,7 +152,7 @@ a{color:var(--acc)}
     <li>증폭석은 성공 확률에 %p로 더해지고, 시도마다 1개 소모, 확정 돌파 시도에는 쓰지 않는 것으로 봤습니다. 위키에 "1~10%"로만 나와 있어 실제 수치에 맞게 넣어 주세요.</li>
     <li>정수 제작 실패 시 재료는 모두 사라지는 것으로 봤습니다.</li>
   </ul>
-  <p class="sign">from.진솔</p>
+  <p class="sign">by.진솔</p>
 </div>
 
 <script>

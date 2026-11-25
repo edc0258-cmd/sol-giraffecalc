@@ -13,12 +13,13 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans KR",system-ui,sans-serif}
 .top{background:#14121c;color:#fff;padding:clamp(40px,7vw,88px) max(5vw,16px) clamp(32px,5vw,56px)}
 .wrap{max-width:1040px;margin:0 auto}
-h1,h2{font-family:"Do Hyeon",sans-serif;font-weight:400;line-height:1.05;margin:0}
+h1,h2{font-family:"DHsite","Do Hyeon",sans-serif;font-weight:400;line-height:1.05;margin:0}
 h1{font-size:clamp(38px,7vw,64px);text-wrap:balance}
 h1 small{font-family:"Noto Sans KR",sans-serif;font-size:16px;font-weight:500;color:#c9c4d6;margin-left:8px;white-space:nowrap}
 .top p{color:#c9c4d6;margin:14px 0 0;max-width:46ch}
 main{padding:clamp(28px,5vw,56px) max(5vw,16px)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+a.card[data-need]{display:none}a.card[data-need].ok{display:flex}.lock{display:none;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:22px;color:var(--mute)}.lock.ok{display:block}.lock b{color:var(--ink)}.lock button{margin-top:12px;font:700 15px "Noto Sans KR",sans-serif;min-height:42px;padding:0 16px;border-radius:10px;border:0;cursor:pointer;background:#5865F2;color:#fff}
 a.card{display:flex;flex-direction:column;gap:10px;background:var(--card);border:1px solid var(--line);border-top:6px solid var(--c);border-radius:14px;padding:22px 22px 20px;color:inherit;text-decoration:none;transition:transform .15s,box-shadow .15s}
 a.card:hover{transform:translateY(-3px);box-shadow:0 10px 28px #0000001f}
 a.card:focus-visible{outline:3px solid var(--c);outline-offset:3px}
@@ -26,14 +27,28 @@ a.card:focus-visible{outline:3px solid var(--c);outline-offset:3px}
 .card p{margin:0;color:var(--mute);font-size:15px}
 .card ul{margin:4px 0 0;padding-left:1.1em;font-size:14px;color:var(--mute)}
 .card .go{margin-top:auto;padding-top:8px;font-weight:700;color:var(--c)}
-.enh{--c:light-dark(#4b3fd1,#9d8cff)}.alc{--c:light-dark(#7a1d45,#e07aa6)}.cook{--c:light-dark(#b4531a,#f0a065)}
+.enh{--c:light-dark(#4b3fd1,#9d8cff)}.alc{--c:light-dark(#7a1d45,#e07aa6)}.cook{--c:light-dark(#b4531a,#f0a065)}.mkt{--c:light-dark(#1f7a55,#5fd0a0)}.adm{--c:light-dark(#4a4560,#b9b2cc)}
 footer{padding:0 max(5vw,16px) 40px;color:var(--mute);font-size:13px}
 </style>
+<style id="sitenav-css">
+.sitenav{position:sticky;top:0;z-index:50;background:#14121c;border-bottom:1px solid #2c2838;font:500 15px/1 "Noto Sans KR",system-ui,sans-serif}
+.sitenav .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:0 max(5vw,16px);overflow-x:auto;scrollbar-width:none}
+.sitenav a{color:#c9c4d6;text-decoration:none;padding:0 14px;min-height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:3px solid transparent}
+.sitenav a:hover{color:#fff}
+.sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
+.sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="preload" href="fonts/do-hyeon-site.woff2" as="font" type="font/woff2" crossorigin>
+<style id="dh-site">@font-face{font-family:"DHsite";src:url("fonts/do-hyeon-site.woff2") format("woff2");font-display:block}</style>
 </head>
 <body>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html">강화 기대값</a><a href="market.html" data-need="member">요리 재료 거래소</a><a href="cooking.html" data-need="요리사">요리</a><a href="alchemy.html" data-need="연금술사">연금술</a><a href="admin.html" data-need="운영자">운영자</a></div></nav>
 <header class="top"><div class="wrap">
-  <h1>기린서버 생활 계산기 <small>from.진솔</small></h1>
-  <p>강화에 드는 평균 비용, 연금술·요리의 재료비와 시간당 수익을 한곳에서 계산해요. 입력한 값은 이 브라우저에 저장돼요.</p>
+  <h1>기린서버 생활 계산기 <small>by.진솔</small></h1>
+  <p>강화 기대값은 열어놨습니다! 마을 인원은 로그인하면 더 많은 기능을 사용하실 수 있어요.</p>
 </div></header>
 <main><div class="wrap grid">
   <a class="card enh" href="enhance.html">
@@ -42,19 +57,48 @@ footer{padding:0 max(5vw,16px) 40px;color:var(--mute);font-size:13px}
     <ul><li>확정 돌파·하락 반영</li><li>보호의 돌·증폭석 설정</li><li>운 시뮬레이션</li></ul>
     <span class="go">계산하러 가기 →</span>
   </a>
-  <a class="card alc" href="alchemy.html">
-    <h2>연금술</h2>
-    <p>비약 재료비, 장보기 목록, 등급별 기대 수익</p>
-    <ul><li>숙련도·막자 강화·가루 반영</li><li>유저/상점 판매 시간당 수익</li><li>광물 대체 비교</li></ul>
-    <span class="go">계산하러 가기 →</span>
+  <a class="card mkt" href="market.html" data-need="member">
+    <h2>요리 재료 거래소</h2>
+    <p>농부·어부가 올린 작물·물고기를 요리사가 원하는 만큼 골라 사는 마을 거래소</p>
+    <ul><li>한 글에 여러 품목, 낱개·세트·셜커 단위</li><li>품목별로 원하는 수량만 부분 구매</li><li>마을 명단에 있는 사람만 이용</li></ul>
+    <span class="go">재료 사러 가기 →</span>
   </a>
-  <a class="card cook" href="cooking.html">
+  <a class="card cook" href="cooking.html" data-need="요리사">
     <h2>요리</h2>
     <p>요리 재료비, 장보기 목록, 등급별 기대 수익</p>
-    <ul><li>숙련도·식칼 강화·손질 반영</li><li>재료 손실 방지 기대 원가</li><li>시간당 순수익</li></ul>
+    <ul><li>요리사 권한 필요</li><li>숙련도·식칼 강화·손질 반영</li><li>재료 손실 방지 기대 원가</li><li>시간당 순수익</li></ul>
     <span class="go">계산하러 가기 →</span>
   </a>
+  <a class="card alc" href="alchemy.html" data-need="연금술사">
+    <h2>연금술</h2>
+    <p>비약 재료비, 장보기 목록, 등급별 기대 수익</p>
+    <ul><li>연금술사 권한 필요</li><li>숙련도·막자 강화·가루 반영</li><li>유저/상점 판매 시간당 수익</li><li>광물 대체 비교</li></ul>
+    <span class="go">계산하러 가기 →</span>
+  </a>
+  <a class="card adm" href="admin.html" data-need="운영자">
+    <h2>운영자</h2>
+    <p>마을 명단과 요리사·연금술사 권한, 계산기 파일 관리</p>
+    <ul><li>로그인 요청한 사람 바로 추가</li><li>농부·어부·요리사·연금술사 권한</li><li>계산기 파일 올리기</li></ul>
+    <span class="go">관리하러 가기 →</span>
+  </a>
+  <div class="lock" id="lock"></div>
 </div></main>
 <footer><div class="wrap">수치는 기린서버 위키 기준이며, 위키에 없는 값은 각 계산기의 '계산 기준'에 적어 두었어요.</div></footer>
+<script>
+{
+const cards=[...document.querySelectorAll('a.card[data-need]')],lock=document.getElementById('lock');
+function draw(){
+  const A=window.Auth;if(!A)return;const i=A.info();
+  cards.forEach(c=>c.classList.toggle('ok',A.can(c.dataset.need)));
+  let h='';
+  if(i.configured&&!i.user)h='<b>마을 사람이신가요?</b><br>디스코드로 로그인하면 요리 재료 거래소를 쓸 수 있고, 요리사·연금술사는 자기 계산기도 볼 수 있어요.<br><button type="button" id="lk">디스코드로 로그인</button>';
+  else if(i.configured&&!i.member)h='<b>아직 마을 명단에 없어요.</b><br>요리 재료 거래소에 들어가면 내 디스코드 ID를 볼 수 있어요. 그 ID를 운영자에게 보내 명단에 추가해 달라고 해 주세요.';
+  else if(i.configured&&!i.roles.includes('요리사')&&!i.roles.includes('연금술사')&&!i.admin)h='<b>요리·연금술 계산기</b><br>요리사나 연금술사 권한이 있으면 여기에 계산기가 나와요. 필요하면 운영자에게 요청해 주세요.';
+  lock.innerHTML=h;lock.classList.toggle('ok',!!h);
+  const b=document.getElementById('lk');if(b)b.onclick=A.login;
+}
+if(window.Auth){Auth.ready.then(draw);Auth.onChange(draw)}
+}
+</script>
 </body>
 </html>
