@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>요리 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 게임 도구 — 연금술 계산기의 자매판, 같은 뼈대에 부엌 색
+   IDEA: 요리사의 주방 주문표 — 왼쪽 메뉴판, 오른쪽 장보기 쪽지
+   PICTURE: 상단 띠의 냄비, 총 재료비만큼 차오르는 수프
+   COLOUR and TYPE: 토마토 #8f2d1c 띠, 청록 보조, 금 강조 / Do Hyeon + Noto Sans KR
+   LAYOUT: 결과 띠 → 요리 목록 | 장보기 목록 → 보유·단가 표 */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#15110f);--ink:light-dark(#1d1512,#f3ede9);--mute:light-dark(#6e625c,#ab9f98);--card:light-dark(#f8f1ec,#211a17);--line:light-dark(#e8dcd3,#382d28);--band:#8f2d1c;--teal:light-dark(#17645f,#62c4ba);--gold:#f2c14e;--warn:light-dark(#b0391f,#ff9b7d)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:16px}body{margin:0;padding-bottom:72px;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2{font-family:"Do Hyeon",sans-serif;font-weight:400;line-height:1.05;margin:0;text-wrap:balance}
+h2{font-size:28px;margin-bottom:14px}
+.top{background:var(--band);color:#fff}
+.top .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+.top h1{font-size:clamp(32px,5vw,48px)}
+.top h1 .by{font-family:"Noto Sans KR",sans-serif;font-size:15px;font-weight:500;color:#f6d8cf;margin-left:6px;white-space:nowrap}
+.top p{margin:8px 0 0;color:#f6d8cf;max-width:52ch}
+.res{display:flex;gap:28px;flex-wrap:wrap;margin-top:22px}
+.res div{display:flex;flex-direction:column}
+.res b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:clamp(40px,8vw,72px);line-height:1;color:var(--gold);white-space:nowrap;font-variant-numeric:tabular-nums}
+.res .s b{font-size:clamp(28px,4vw,40px);color:#fff}
+.res span{font-size:14px;color:#f6d8cf}
+.pot{width:170px;height:170px}
+#soup{transition:y .5s,height .5s}
+@media(prefers-reduced-motion:reduce){#soup{transition:none}}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+button{font:inherit;color:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);min-height:44px;padding:0 14px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.chips button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:var(--bg);font-weight:700}
+.dish{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.dish h3{margin:0;font-size:17px;display:flex;gap:4px 8px;align-items:baseline;flex-wrap:wrap}
+.ico{width:36px;height:36px;image-rendering:pixelated;align-self:center;flex:none}
+.mi{width:20px;height:20px;image-rendering:pixelated;vertical-align:-4px;margin-right:5px}
+.lv{font-size:13px;font-weight:500;color:var(--teal);white-space:nowrap}
+.fx{font-size:13px;font-weight:400;color:var(--mute);white-space:nowrap}
+.mats{display:flex;flex-wrap:wrap;gap:6px;grid-column:1}
+.mats span{font-size:13px;background:var(--card);border-radius:6px;padding:2px 8px;white-space:nowrap;display:inline-flex;align-items:center}
+.mats span.fish{background:light-dark(#e3f0f4,#18282d)}
+.ssn{grid-column:1;display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:var(--mute)}
+.ssn em{font-style:normal;font-weight:700;color:var(--band)}
+:root[data-theme=dark] .ssn em{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .ssn em{color:var(--gold)}}
+.cost{font-size:14px;color:var(--mute);grid-column:1}
+.cost b{color:var(--ink);font-variant-numeric:tabular-nums}
+.sp{grid-column:1;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.sp input{width:120px;min-height:38px;text-align:right}
+.pos{color:var(--teal)!important}.neg{color:var(--warn)!important}
+.sum{margin:18px 0 0;padding:14px;border-radius:10px;background:var(--bg);display:grid;gap:6px}
+.sum div{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.sum dt{color:var(--mute)}.sum dd{margin:0;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sum .big{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-weight:700;font-size:17px}
+.tm{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:14px;font-size:15px}
+.tm input{width:72px;text-align:right}
+.step{grid-row:1/span 5;grid-column:2;display:flex;align-items:center;gap:4px;align-self:center}
+.step button{width:44px;padding:0;font-size:20px}
+.step input{width:64px;text-align:center}
+input{font:inherit;font-size:16px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;font-variant-numeric:tabular-nums}
+.dish.on h3{color:var(--band)}:root[data-theme=dark] .dish.on h3{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .dish.on h3{color:var(--gold)}}
+.note{position:sticky;top:62px;background:var(--card);border-radius:14px;padding:20px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-weight:500;color:var(--mute);font-size:13px;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{padding:8px 4px;border-bottom:1px solid var(--line)}
+.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.miss{color:var(--warn)}
+tr.done td{color:var(--mute)}
+tfoot td{font-weight:700;border:0;padding-top:12px}
+.empty{color:var(--mute);padding:20px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.prices{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+.prices h3{font-size:15px;margin:0 0 8px;color:var(--teal)}
+.pr,.ph{display:grid;grid-template-columns:minmax(0,1fr) 76px 100px;gap:8px;align-items:center;padding:3px 0;font-size:15px}
+.ph{font-size:13px;color:var(--mute);padding:0}.ph span{text-align:right}
+.pr input{width:100%;text-align:right;padding:0 8px}
+.pr>span{display:flex;align-items:center;line-height:1.3;overflow-wrap:anywhere}.pr>span .mi{flex:none}
+.jump{position:fixed;right:16px;bottom:16px;z-index:5;background:var(--teal);color:var(--bg);border:0;font-weight:700;box-shadow:0 6px 18px #0004;border-radius:999px;padding:0 18px}
+.jump.up{background:var(--ink)}
+.gp{min-height:30px;padding:2px 10px;border:1px dashed var(--warn);color:var(--warn);background:transparent;border-radius:8px;font-size:13px;font-weight:500}
+.gp:hover{background:light-dark(#fbe9e4,#3a201a)}
+.pr.hl input[data-m]{outline:3px solid var(--gold);outline-offset:1px;animation:hl 1.6s ease-out}
+@keyframes hl{0%,30%{box-shadow:0 0 0 6px #f2c14e88}100%{box-shadow:0 0 0 0 #f2c14e00}}
+@media(prefers-reduced-motion:reduce){.pr.hl input[data-m]{animation:none}}
+.pr,.ph{grid-template-columns:minmax(0,1fr) 64px 92px 52px!important}
+.ph span:last-child{text-align:center;font-size:12px;line-height:1.2}
+.selfbox{display:flex;justify-content:center;align-items:center;min-height:44px;cursor:pointer}
+.selfbox input{width:22px;height:22px;min-height:0;accent-color:var(--teal);cursor:pointer}
+.pr.self span{color:var(--teal)}.pr.self input[data-m]{opacity:.4;text-decoration:line-through}
+.selfc{color:var(--teal);font-size:13px;font-weight:500}
+.imp{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:18px}
+.imp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filebtn{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:10px;background:var(--teal);color:var(--bg);font-weight:700;cursor:pointer}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.filebtn:focus-within{outline:3px solid var(--gold);outline-offset:2px}
+.gsel{display:flex;align-items:center;gap:8px;font-size:15px}
+select{font:inherit;font-size:16px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px}
+#impMsg.ok{color:var(--teal)}#impMsg.err{color:var(--warn)}
+.cfgband{background:var(--card)}
+.cfgsum{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;cursor:pointer;list-style:none;min-height:44px}
+.cfgsum::-webkit-details-marker{display:none}
+.cfgsum h2{margin:0}
+.cfgmini{font-size:14px;color:var(--mute);flex:1 1 220px}
+#cfgDet[open] .cfgmini{display:none}
+.chev{width:12px;height:12px;border-right:3px solid var(--ink);border-bottom:3px solid var(--ink);transform:rotate(45deg);margin:0 6px 4px auto;transition:transform .2s}
+#cfgDet[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+.cfgsum:focus-visible{outline:3px solid var(--teal);outline-offset:4px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){.chev{transition:none}}
+.cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px 18px;margin-top:6px}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--mute)}
+.fld input,.fld select{width:100%}
+.fld.chk{flex-direction:row;align-items:center;gap:10px;color:var(--ink);font-size:15px;min-height:44px;cursor:pointer}
+.fld.chk input{width:22px;height:22px;min-height:0;accent-color:var(--teal)}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.stats span{background:var(--bg);border-radius:8px;padding:4px 10px;font-size:14px;white-space:nowrap}
+.stats b{font-variant-numeric:tabular-nums}
+.odds{display:flex;height:34px;border-radius:10px;overflow:hidden;margin-top:14px;font-size:13px;font-weight:700}
+.odds div{display:flex;align-items:center;justify-content:center;color:#fff;white-space:nowrap;overflow:hidden;min-width:0}
+.o1{background:#8a8f98}.o2{background:#2f7fd0}.o3{background:#c08a14}.o4{background:#3a2a24}
+.olg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:15px;color:var(--ink);margin-top:8px}.olg b{font-variant-numeric:tabular-nums}
+.odds small{font-size:12px}
+.odds div+div{box-shadow:inset 2px 0 0 #fff6}
+.olg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.man{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.man label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+.rowodds{font-size:13px;color:var(--teal)}
+.gps{grid-column:1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:14px;color:var(--mute)}
+.gps label{display:flex;align-items:center;gap:6px}
+.gps input{width:92px;min-height:38px;text-align:right}
+details.note2{margin-top:14px;font-size:13px;color:var(--mute)}
+details.note2 summary{cursor:pointer;min-height:32px}
+.small{font-size:13px;color:var(--mute);margin:6px 0 0}
+.lab{font-size:13px;color:var(--mute);margin:0 0 6px}
+@media(max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}.note{position:static}}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:2px 0;padding-inline-start:6em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:5.5em;margin-inline-start:-6em;color:var(--mute);font-size:13px}.stack tfoot td::before{content:none}.stack tfoot td{padding-inline-start:0}.top .wrap{grid-template-columns:minmax(0,1fr)}.pot{display:none}.dish{grid-template-columns:minmax(0,1fr)}.step{grid-row:auto;grid-column:1;justify-self:start}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+<style id="sitenav-css">
+.sitenav{position:sticky;top:0;z-index:50;background:#14121c;border-bottom:1px solid #2c2838;font:500 15px/1 "Noto Sans KR",system-ui,sans-serif}
+.sitenav .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:0 max(5vw,16px);overflow-x:auto;scrollbar-width:none}
+.sitenav a{color:#c9c4d6;text-decoration:none;padding:0 14px;min-height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:3px solid transparent}
+.sitenav a:hover{color:#fff}
+.sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
+.sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
+</style>
+</head>
+<body>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html">강화 기대값</a><a href="alchemy.html">연금술</a><a href="cooking.html" aria-current="page">요리</a></div></nav>
+<header class="band top"><div class="wrap">
+  <div>
+    <h1>요리 계산기 <small class="by">from.진솔</small></h1>
+    <p>숙련도·손질·식칼 강화·비약을 정하고 요리 개수와 등급별 판매가를 넣으면, 탄 요리 확률까지 반영한 기대 수익과 시간당 수익이 계산됩니다.</p>
+    <div class="res">
+      <div><b id="tot">0</b><span>구매할 재료비</span></div>
+      <div class="s"><b id="saved">0</b><span>보유분으로 절약</span></div>
+      <div class="s"><b id="profit">0</b><span>기대 순수익</span></div>
+      <div class="s"><b id="perh">–</b><span>시간당 순수익</span></div>
+      <div class="s"><b id="cnt">0</b><span>만들 요리</span></div>
+    </div>
+  </div>
+  <svg class="pot" viewBox="0 0 170 170" aria-hidden="true">
+    <defs><clipPath id="pc"><path d="M22 70h126v52a30 30 0 0 1-30 30H52a30 30 0 0 1-30-30z"/></clipPath>
+    <linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#f7d77c"/><stop offset=".6" stop-color="#f2c14e"/><stop offset="1" stop-color="#d0902a"/></linearGradient></defs>
+    <path d="M60 52c-6-10 6-16 0-28M85 50c-6-10 6-16 0-28M110 52c-6-10 6-16 0-28" fill="none" stroke="#fff8" stroke-width="4" stroke-linecap="round"/>
+    <g clip-path="url(#pc)"><rect width="170" height="170" fill="#6a1f12"/><rect id="soup" x="0" y="152" width="170" height="0" fill="url(#sg)"/>
+    <circle cx="62" cy="128" r="5" fill="#fff6"/><circle cx="96" cy="114" r="3.5" fill="#fff5"/><circle cx="118" cy="136" r="2.5" fill="#fff6"/></g>
+    <path d="M22 70h126v52a30 30 0 0 1-30 30H52a30 30 0 0 1-30-30z" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M22 82H8M148 82h14" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+    <rect x="14" y="62" width="142" height="10" rx="5" fill="#c4553a" stroke="#fff" stroke-width="3"/>
+  </svg>
+</div></header>
+
+<section class="band cfgband" id="cfgSec"><div class="wrap">
+  <details id="cfgDet" open><summary class="cfgsum"><h2>요리사 설정</h2><span class="cfgmini" id="cfgMini"></span><span class="chev" aria-hidden="true"></span></summary>
+  <div class="cfg">
+    <label class="fld">요리사 숙련도 (1~60)<input type="number" min="1" max="60" inputmode="numeric" id="cLv"></label>
+    <label class="fld">사용할 조리대 수<input type="number" min="1" max="7" inputmode="numeric" id="cSt"></label>
+    <label class="fld">요리용 식칼 강화<select id="cKn"></select></label>
+    <label class="fld">화덕의 비약 (요리 시간)<select id="cOv"><option value="">안 마심</option><option>일반</option><option>고급</option><option>희귀</option></select></label>
+    <label class="fld">미식의 비약 (재료 소진 없이 만들 확률)<select id="cGm"><option value="">안 마심</option><option>일반</option><option>고급</option><option>희귀</option></select></label>
+    <label class="fld">손질한 재료 종류 수<select id="cPr"><option value="0">0종 (손질 안 함)</option><option value="1">1종</option><option value="2">2종</option><option value="3">3종 (최대)</option></select></label>
+    <label class="fld">탄 요리 판매가<input type="number" min="0" step="any" inputmode="decimal" id="cBp" placeholder="0"></label>
+    <label class="fld chk"><input type="checkbox" id="cEv">저녁 이벤트 (축복 1.2배)</label>
+    <label class="fld chk"><input type="checkbox" id="cUp">숙련도 등급 상승 반영</label>
+    <label class="fld chk"><input type="checkbox" id="cMan">결과 확률 직접 입력</label>
+  </div>
+  <div class="man" id="manBox" hidden>
+    <label>일반 %<input type="number" min="0" step="any" data-mp="일반"></label>
+    <label>고급 %<input type="number" min="0" step="any" data-mp="고급"></label>
+    <label>희귀 %<input type="number" min="0" step="any" data-mp="희귀"></label>
+    <label>탄 %<input type="number" min="0" step="any" data-mp="탄"></label>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="odds" id="odds" aria-label="결과 확률"></div>
+  <div class="olg" id="olg"></div><p class="small" id="oddsCap"></p>
+  <details class="note2"><summary>계산 기준 보기</summary>
+    <p>기린월드 위키(요리사·강화·비약 문서) 수치를 썼어요. 손질 안 함 기준 일반 60 · 고급 25 · 희귀 5 · 탄 10%(1차)이고, 탄 요리 기본 확률은 차수마다 1차 10 · 2차 7.7 · 3차 5.3 · 4차 3%로 줄어요(줄어든 만큼은 일반·고급·희귀에 비율대로 나눠요). 손질한 재료 종류(물고기·작물 합쳐 최대 3종)마다 희귀 +5%p, 탄 −10%, 요리 시간 −5%(최대 15%)예요. 숙련도 효과는 그 구간에 들어서면 받는 값으로, 이전 구간까지 더한 합계(요리 시간·재료 손실 방지·등급 상승: Lv 1~9 0.9·0.5·2.3%, Lv 10 39·0.5·2.6%, Lv 11~20 40.5·1.5·6.4%, Lv 21~30 42·3·13.9%, Lv 31~40 42·6·33.9%, Lv 41~50 42·11·53.9%, Lv 51~60 42·13·63.9%)를 썼고, 화덕의 비약은 +7.5/11/15%(합계 최대 57%), 미식의 비약은 +5/7.5/10%p로 더했어요. 재료 손실 방지는 요리할 때 재료를 쓰지 않고 만들 확률이라, 원가에 (1 − 확률)을 곱한 평균값을 기대 재료비로 썼어요. 장보기 목록은 요리를 걸려면 재료가 있어야 하니 전부 필요한 양으로 보여줘요. 식칼 강화는 데메테르의 축복(탄이 안 나오는 추가 요리 1개) 확률로 넣었어요.</p>
+    <p>재료 종류가 3개보다 적은 요리(감자 수프·호박죽은 0종, 레몬에이드는 1종)는 그 요리에 있는 종류 수까지만 적용돼요.</p>
+    <p>위키에 정확한 공식이 없는 부분: 등급 상승 확률은 일반→고급, 고급→희귀로 한 단계 오르는 확률로 적용했고(최대 90%), 제철 재료 효과는 수치가 없어 넣지 않았어요. 실제 확률을 알면 '결과 확률 직접 입력'으로 바꿔 주세요. 조리대 하나는 한 번에 차수별 1·3·4·6개를 만든다고 보고 소요 시간을 계산해요. 즉시 완성·연회 준비 기술은 넣지 않았어요.</p>
+  </details>
+</details></div></section>
+
+<main class="band"><div class="wrap grid">
+  <section>
+    <h2>요리 목록</h2>
+    <div class="imp">
+      <div class="imp-row">
+        <label class="filebtn">상점 시세 파일 불러오기<input type="file" id="shopFile" accept=".xlsx,.xls,.csv"></label>
+      </div>
+      <p class="small" id="impMsg">시세 엑셀 파일을 올리면 일반·고급·희귀 '현재 판매가'가 각 요리의 등급별 판매가에 자동으로 들어가요.</p>
+    </div>
+    <p class="lab">단계</p>
+    <div class="chips" id="tiers" role="group" aria-label="단계별 보기"></div>
+    <p class="lab">재료 계절</p>
+    <div class="chips" id="seasons" role="group" aria-label="계절별 보기"></div>
+    <div id="list"></div>
+  </section>
+  <aside class="note" aria-live="polite">
+    <h2>장보기 목록</h2>
+    <div id="shop"></div>
+    <div class="tm"><span>총 제작 시간 (직접 입력)</span><input type="number" min="0" inputmode="numeric" id="th" aria-label="총 제작 시간(시간)">시간<input type="number" min="0" inputmode="numeric" id="tmn" aria-label="총 제작 시간(분)">분</div>
+    <p class="small" id="tmhint"></p>
+    <dl class="sum" id="sum"></dl>
+    <div class="row">
+      <button type="button" id="copy">목록 복사</button>
+      <button type="button" id="clearQ">개수 초기화</button>
+      <button type="button" data-go="stock">보유 수량·단가 입력</button>
+    </div>
+  </aside>
+</div></main>
+
+<section class="band" id="stock" style="background:var(--card)"><div class="wrap">
+  <h2>보유 수량과 재료 단가</h2>
+  <p class="small" style="margin:-6px 0 18px">이미 가진 재료 수량을 넣으면 그만큼 빼고 살 양만 계산해요. 입력한 값은 이 브라우저에 저장돼서 다음에 열어도 그대로 남아 있습니다.</p>
+  <div class="prices" id="prices"></div>
+  <div class="row"><button type="button" id="clearH">보유 수량 지우기</button><button type="button" id="clearP">단가 전부 지우기</button></div>
+</div></section>
+<button type="button" class="jump" id="jump">보유 수량·단가 입력 ↓</button>
+
+<script>
+{
+const ICONS={"dish": {"감자 수프": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEbElEQVR42q2Ub0zUdRzHX7/f/Yc7To7DQw4JBYz5d8CmrKYmhg7dmv1h5ajcSlfWk+yJ/dnK1VzTtR61RWtZZmqKmkZLkqWBmg8MUQRBEFDh7uA48Phx/I77/e5+3x641bT0UZ+Hn332/rwfvN8vSSTGedh8sP1dIQAJEMDHuz6RHnZvvn8RUyaFoii8UvsyIpWkvvEUhpECQDbJVK94QiCZ2LP/O1wZGTgzXPc8kO53WPf5F8Jut7OwrJzYpII1cpaElsAwUljMFoycVbhcbq62taLGYrz6+hbJZrP/t+CSohJx7monvzQcx2sexqdfxOPzkeEr5E6wCwGMhSIIw6DXtoEVK1dSU72Oc21/SvcIxpRJsW/v9zzz/EZam49SkjWCZ24Z6Tadm+EAZ3rb2LRsDbLZjkjFid9s5E7cS0idScHSWk4cOUrNCzVkZWdLiMQ4T69+XERGBsWRb3eLiRtfC228WeiRY0Lv3yNifQfFtBoQeuyG2F33rJhqrhR66B1xq65QKJd2iq7Dm0Q4eFO8tKFaiMQ4pg3VVWJa03Hb4iyeNYTL7SM11kN3qBPJmoF79nrE6DkudDfw1LxiLJYgYnIYoU4wGlDJL1vBYPt5NHs+MmKHfKy+nq1vbWPi9gWyCspp6PgN3etiYdEsHINNGNMhPjpQh9+ViWQk0UdCJCMRNFXDkeXCnJaJxWnnxc1b2L93HzKAMASZ2R6SSoD1hfk4k52kwm1Eey9BYpgPt+3HanJz7Np1RM5GBgLzGFXnMOXJI6lPY3I4EUIgSdLdHMoWOxarHZPDS7T9KC6PCWEYqKrMpc4fyJo9RMGcNVSYMrGmSxSvXYDsnEOwvwEjPoYsu5EkGRDIObm5hIYCzH5kLoaRwuqvZDIwxcTgKO7iUhbZgvin2pka+BG3FMWUuYDkeBfYvFwIp0g6/HhnuLnV34s/L+9ubNYuXyXqTxwg2fcVrYqFTv0yNdYS0k0hnPPz4M4tAv1J4jnL+LmtjTcfK8Py6GsY4Ra0aD9RuZw3tm7np6ZGyQxgGEkOHjpJecY4FRXLWOksRY/2YUr0IcK9IJswKwHyCx28vflLUtMxtO5vEGYr1y5eoV92E1fVu/UEOP7rSdwz0ihYt5NkegWGpYDhvj7iCQ/D7QOM9txmcNpNV3QKbeh3gi27MPmWE7cvxbZ4K6oa43DD8X/gkO50SpHhsOhob6Vo3nxc3kWkFUXpOFNHyaJKbM4MSp0zEYbO5VOHyCvfSNJRyJW2swSCIUaGBsn0eKR7uvxHy1kxNqGQm+fHm+XFkeYEJCxmE7quARKxqRiapgMyA/3XURSFCUWluMDPqieflP4FB13T2fHe++K52lrS0tIAUOMqoWAISZYxUikMwwAJFGWS0ycb2fXZp3izvdID8XW6qUnY0l30dHXjy80ld5YPSZaJRMZI6jpDwSDj4VGWlJVikcTfzh4I2MqqKgmgp7NDnG9pxjUjExBoehLDMNCnNfy+LNZUrX4ouf+3+QtB6B7Kuu3OpwAAAABJRU5ErkJggg==", "호박죽": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAET0lEQVR42q2Ua2zTZRSHn/f9t13vnd1gWDo2LgMjMBAwQ0AcCIZFLkMShMG8wBA0UYnxAxoTMcSgX4wxoDGIQTeU4KJMgoYsceMyLs7BBtsCuMUx3Sprx7qu7Xr79/UDCTgkfPJ8Oycnv3NO8juPUPGb3C927nhLgQDUrfyD3eJ+/Ya7C+HQkBoKhajYsJG0rlN9/Cf0dBqUQGqSZfMXKoPRwL6qShxOJ3anY8QAcfeGn+/Zq2xWCw8VziASiRI/9QWJeAKVVhhNRjIe34TD4eBSUxPDw8NUvLJNZGSY7y04q2CKOtFymWM/1mDzNWI6u598jyLbK/irA6Sm6O4DpQQDKz7miUXFbFxVysmLTWKEYCQcVpVffsWasnWcq6libMeHeB5diCtVj4ol0EMCoxuG/SBTiv6/BX0BRXD6ixSufZ0j1T9Q9lw5mW63kAAvrF1H2aYK6k41MNG/m8J3z5KZ5yN5I4nBLbAUQLxPIXXQLILcYhidBQ92HKBpxwKeWb+B7S+/CoBWWrJExWMxTLEAD7dswTtNI3XhU/aUhykoVJizR8O808jpz+Lv8nHykJ+h6wXkFfmxGsAhU/R09CJzCxFC7JRHvqtm6/bX6G+swTNHwbBOhlew6vkkekQnmc4HLU4sdBNcXp4sGcTubCPQDjaPQqAYDAYor9jMoa+r7thmlDPBwCWBySugF8aXvYEsWE1/VTn9h98hZcnCFf+VmM2NkEG88xQCSc44RZc/jZ7WEUIhbx1uQQBCKaLXUqRjoE1eA0Kiz9yKPdaCy38a91NvYpm3jWsXzPSeh1REkdYVTjuAQCkwKMBqsZE/YRIO7RcaqyXte3N5etxhjLbRRK7WkVPowfLIPpRmQQ+cZH5JlHBIIC0mhEySneMhGo3eWqr5TK06/vNxNq9fRXT/QlxeuHZdMN6jSEUV/f0a5gyFa0MlmtnKQGczpjPv4V46Ef33Pm52hEmUHKSypp4VpaXIGbNni9/OnaF7SNExMIlwyEnBGIXFAdml07CkzRw9YEccK8f//dtknN5F1mQJwU4Gb2hcCUygO2qktbmFOY/NFbeNfaL+BAuKFzP8ZxvyjyMM1H2G3a7InCgQGqR1QbhLYbaCr1cwauX7JDOn4lNOmpsusLp05R1j2+x2kTd+AhebGjF7p+Je/hHGxZ9wvg4u1Sui3YpAqyIeg9qjClm0i8z5W/Cl7Fxpa2fylClkut1ixC/X19aqwUiMsV4P2dnZ2O12pBQopTAYDIBgMBQiHoshpKS3x0dPTw+DwRD53jEsW7Fc/AcOiUSCbw5+q+bOLUJICSgiQxF6fT4MBgPJVIp0Oo0UAk3TuNzaxtaXtpD5gOs2HOS/0WUymcjzjmUgGOTsqQY6O7uQmkbuuFyMJiMmkwm/P8CV9nbMVgtFs2aOELsnYBctXSIArra2qnMNDVgdDgSCZCpJStdRqSQ5WVksXlR8X3L/b/EPr6fYRk8XTnUAAAAASUVORK5CYII=", "송어 버터구이": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAED0lEQVR42u2Ua0zVdRjHP7//OfzPORAoh8P/4BFIEFE4JuKYl0DLnM5qJtRwuC6si1o6zEvZbbNaDq1kXtJS2jJtNsucqYlWSxeTNWQgYmJ4vMBRj5wDh2vncK7/fy9cNrfyTa/a+rx6XjzPZ8+e7fvAfwWhBXv+lWDSxElaTEyULo+fKx0OAaC/28C+L/dpXV0eVFVFABoQCQUROgmDbGTZ8goxf2YmqaY+dh1z/fOm1TurtZ07dlBbewJvl4eO9g5iY2OR9AaMBiOSJAiGwiwoXUD88ER2fbya6k/3kCcu8MVZMzt3771TeuCbA1pmRga2EVY8bheaptHR0YGz3cnx/bvJyB3LuYGrpGg23P0+shSJBxOcpI/LpKbJh7uzh4rKPX9JIyqcO9Oo9ff0Yo7zcrz5GE/Pepwnl27F5/MxWtET0Jt42G6k/ewVZhUmEvB0MhSMo7pZ4p33KkkacS+p6em3bnro20NaJDhEVtYYIuEB2q70IG72snDROkqKbJji4hGajNd5jWBnN6mWIBOm5HP9eoT1+6/xwea1HDxynJKSEcTGxgkJIMWqkDdxIpJOx9X2s/zaepqYBBtvLS0k19hJutlNunqZ6eNVwl4/46fmokucwIEfHDzzbDkJpiFeW7MKNRoBQBcNDGqF0yazffsOtm37iDRzGKnTgVXnYYrVS02tk5AvQLI+QkKSjclz8okZlsfW9/fS77rJ7BwnEUMyAwEDOfb7hKTTIdauWaZ53N1kxHZz/wT47nsHM3KMxGUPp9NjY6rNjT+sx5ICavwMLjY1UlffR0PDBRbPjSExO5+Wiypow1j47ibi7okXeoD2tmZQZObNKcJeYEBJs1DfeJLpszJQJq1A9TXhCRTw8/YNtLZ5+c3dx7oXRzPMPh9MJgzNX+H09iLLBgEg3ly5RBsVacOe6kfy/U6C1cbzW1r4estj6KNeHFdNXKhr5vT5m7y0WCGruILP36ikyxWgcEouyuh0Wuou88DyjTS0tFJWViqEFuzBcfITbXBwkLQUlQ83HGJytoXcmbM5dvAUxvAlytc8ypDjBLs336B47ViUcIQnnrvI26sLqDnaQnnVYX6q+4WlS14QtxM1ODCovbJiBXn2cdiMQfxRqGmqp3jODGaPPErNGT9js0fStOs8gb4AcryGzl6GJclMQMnEHwgyb94jWJIt4o6YhkIhCvKnaUcO78U/FCGqRpEjl6haVEFRZjyKEqWuTWVMcQW97m5KFy1GGZUjwv5eJEkgy/LtZEp/FrIs03K+UbQ6bjAmxy6EZODHU26eqvwMV9pc3JYS7A+V0ROSKCouJXnkKPH6qpc1NPUO4V1fX39fv3bD5WL1yldB6G41C8HGqvWkWK2Yk8yC//k7/gAo8LILiT7R/AAAAABJRU5ErkJggg==", "무조림": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADjUlEQVR42tWUW0zbZRjGf19begjUwoa1CAQ5iBkbTpHDNvGwBKKYEN10kzEXnThjxDAN3qg4ndHoXITMRDfEGYMzcS7LoiGaKSMkTRgRHaSgnAorpRwLE0rpv6d/P+9mzGR6qc/dm/fJL+/F87zwX5eQoSvXNRxqOCyRf85vvfOGuJ5fs9bi66/OSFtyuow3WPCMTTDSP0iX/SK25DTZ0nxS/usLj77fKGMxlR+/7yAYDOLyTCIAvUZQYIowJhIRRiNSVdmzr4q6F18QBoPh74F5ufnymWdr+LT5Mwr88+QnRnnklR3EgJbXzlJuEUwFoNOvxa4zk3KTDV9ghd+GHeIaYO+lPjk+7uLjV+vZsLJEWbGNpN05tF+Y5Imtd3Kmy0v7khXD3CC7NlvQKiZaf3UjdTdwpOk9SrYUiavAudk5+XJ9A50dHTyfJamoqyXrly8ITC9washI6tZMCqrrcLcd59TKRpZ9Iyw7fexMg8ZOF5k52bR83kx2TrbQ9DsG5GMPV6GXkj0mH083vY1Ju8R3/SvsG80gUL6Tc91enK3vYnOOcaNvHMNsBJdfy08ON6Wqj3AoQkVZJb2XeqVWL3hTL7QEwxF26UcJrzPzemsP87c9wEsHKvB6ZikrtKAseBEGhU3P3U7++o2oi14SjVBu/p0uNRmdTsfEhBsNApyXXej0Br51Spo++oHaDUE+eDKP4kw9mcMdWLVRxCU3jS4dxxrtlGQE2J/qQZMUz4lhgQBMRiNI0FTvrWJ2bobRkSEup23ioSwTZo2P6dMnUZQQhTVlBO121huj7M3IojIWpbt9gNTqgyT6Fskt3U5UjTI1M03Ngf1oikuKxMUeO2E1QsmDlYikXHJnvUz5F/jm2CesjrvQ6aFNl07JU7u5pXQLP5+1M9TTx6TOTM/EJBFV5fyFNu6+Z5u4Gpvurm55sLaezKxstkkXIqTgn1ng1hS4ufR+BvvGsebaMBv0nGs9j1ufhkdrYFVRON78Ifdtv1dcE2ybNUNazGbMCWZSrFb6BhykEyEmQIlI4kSMRX0ChZvvYMLjYXF5GSXgZ3reLdas3qM7HpeOXgeWhHgSEszo4uKIqSqRSBQlqLC8sopWgBIKUVR8F1+ebl27egChUIj8vAIZC4exWsyoMZUrfgWDViABoz6OpVWFlVCYSY/zL7B/fF9HjzTKKc8UCAFSgoB1SUkcOtwg+N/qD5SOmlbldjWBAAAAAElFTkSuQmCC", "우렁 쌈밥": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAETElEQVR42rWUa2zTdRSGn3+7dqt1666M7gLdFGTAAMWBDNkGczIVxiVq5KZBNoQYFILczMQABudQJgkXJSQSYEIkCAsjCAXljhkRJrvRraOMbazt6C79t1vp2v78QAySIMEPvl/PyZvnnLznSOJeB0+i5rY7Yt22EnZ9sUl6XJ/iccU2u00kTkoR/bOeE5OX5aLNrmLI9JeF7JLFfzIsLCkWB46VibxF8zl0ZB4rd6Qw4s0ItEEK+k30sfvwwScn3LDtWzH1XTuu2H00t5tp6PqTSzUOvH5ovnsPU0U3AlAPSxKqoQbRLTsfopX+ucMNW0tE0otVjB01jdquw+z51UKX3YNhSCgRwWqMp+z0+vxolRKvZSdS19bF5QM2rOU3pEcSrt9agi4pQHNPGe0uD632Xm7Vypj3tnOm4BoLYl5n5PBQPAooPWRh0ugY5q95hugxqaK63iQeMlz+5QaRmhXFTxVNtHb3YrHKeNwBRKuHGYaX2Jg/E+PxfSxKW0pBxnuE6hRYrC4CygCvrIwi84OpDwjb7DYRFFnHx58OprZWxuSQae/wMvqyg2VeL8MVrZw3niUbFT+sLiY2UsWOd7bz+0UHf1Q78bj99HnEA8MxszOZPScXKRCEOkRJaWkzSaSBLxGNPpHy8yaqZSUtCh3ZcRG0HGykf3QUa95Yi7ZXT2erl++K13HleqVQavU6YQ6tpMJSxcV6BxohsWbsEt7KWEzFKSPuEBVNVpnpSRARGYy5zkbqxAlUq0/hcYUxNGEkGv0Nfq45R+XJFhQr8hdJTcdkoqLV6GNCyIzIYVrO+4SIXgo3b+JOo53UYA89niAudIRyr7uTm6025j1fRFXHCQaEhWO85EDhDWCIj78/8rAeCWuZk/GpkdR1XuGjLUuQO++iCn6aVZtLCE8ycKTBRWy4gkp/NEpcrCtfz9Ksz7nh30N0jJrqo118vfozSQGQbEjgw4R+FM26jmE0dCZcp/jkTtTaMHx+N2MWLiN/+WI6evqQIjTY+qwsGb+YA2d/YUJYIeldk0hu6XsQ7LaWFrGxII8paQmUOq0EjdAyKGUAniY9hvh2yswmZg15gQuWBswNdkL0GgqycrE6VRzdfxRdhZP0vDksXLHqPqE+IUEypM+gxuxgpiaahqLbHD9nYtC4Rs53WLh6Tea27jbmDjetPpg7ZSBfnSln7Td7SazxkjxuMgtXrJIeCnZ6Rga/1TmI7R/D/qI8pnbHcXV3G/UH7WjrPJwuszE4WUPcsxp2/XiTyENe5vY8hdXhIjPn1UffssvpFN8X5JI2Kg6/pGFgko76agvNbR5ONLRzwu1C6RO8HaVDF6TglqOHlk4vlxtvSo80BDhrNIqthZ8QH65Cq1YSGx6MQ/bi6vXh9vpxe/3IvT5kTx9rt2wnMydH+tdv87fMJpO4cNrI6X07CVYpCQgAQUBAvc3FrAX5TM6bxuCUFIn/W38BL/DvfhJYyG4AAAAASUVORK5CYII=", "옥수수전": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAEcklEQVR42sWUaWyTBRzGf2+Prd3WskG7G2HSMZAhg4njkmMqx4Qh4wwjE9z4QBQSk8XIcFGSGQjGICjOyLVBFEEXYcA2ZCJTjh0ijgm4wk7GSNfuaMvern3bvn6AYIh4Jsbn85Nfnn/y/B/4DyTI7p6/ZZQkCaulS+7qsrA2J5NjpZXo9Hp0ep3wr6H5+bmyR9+MpOrBHe1D1SLQ3RbN3u1FQqBG85BX8WegjHnp8ujH4uXRw+JleWoduuS7tKpF+l0SrUEexIQmksYkyn+ZtO5ijVxbXYPH6yNl+kx668/j6eujpOYzeoYFEhCrZEbKCJxuG79clxjwe4jtiiBSm0Re3mbhkUkvVtcyNz2NiBAdVZuymT6umqnhleQaBHJEL5NL7TS/Xk9FZS8avcSW7Gz0k9wcOnzo90kbfqqX932yhxcXLaXzZD6mZ6YxYayDzrYmBLcHnduDx+ahQanE1C3xZYUdc0YYhvhg6i7ZGfG4CuWZ8Xywu1BQAFgtFvnc+RqW5byKw3yQxe8UMCbqDl45kkCVHn/IPIKG+tGnqAnwedgVriRzsYGYcjuVp3vQhCgYMzIGz/BrXG1okBUAKxYtZ+HSDIqzFzJvzVzqr30BARqUoV9R3thOkM+FL+59XDcGk2QykGsMw9XnZs0kHbNqXShscKXRgs2iJjBQgzJmSKicmb2G6opyVi70IdXX0ne7nfDAu6iNqYwKUOHv+B53p5Og5/MovHIIr+gjcclrdN8pI8UQQsklkZ6bEjs2HsA0Ml5QtDQ1ExUdibf1CkOj7qKLCWfCqtUUtPbTevNn/I4+gqZtRB3cRW/pJtYGGJhlisLveYPIMC1e0UtCXyDbNhax893tv/VUJSjQtl1AvGFDHScimDeRKXgJk1wICeuR1HGoB8Wij/IQlDiSdkUEAzdGIbkNWHt9PJn8NHGjEpGR70MF8CFz67E02s/YES/3YP/BhDE0BOe1HqQ7tYin8mhpvMyKbzvAe4uhDjMqmwIheTPNndCtN9Lv6Abh3scq5qcv4PPig0ye/RxHr0s4muyEPDEER8ggjkVEo5Z+ZNB4E6anxnI4XYnfdQGf6EOVug3p6gmOtktk5KyneO+nLF6+5B50yvRpwomjx0lIHkebN5hWi4R5j5kosZ8sdx/qYD++lnZU4UdQ96sQvClINpnOgkxKjpwk6739REeGUlP1DTOfTRUelN/pcMpF+/aTlZNN8ZatRHefxmN1MmdJLJ0XbRjGRkC/g16zHfVgLc5gBVU1TmJWbmVOWip7d31E1surMRiNwkMf5R4YYPrEKXL5ubOYGzv4rqyU26cOoPTKLJ8RTNILsRQVtnK8oZ/Zy1YxP2slqmAjL6UvoLzqa0Gj1f7xoLz1ZoE8fHg0qWnz8fsFrN126spKcFg6SU6dw4jxE1Ep/JytKKOpqYO8/NyHgI+E2qxW2Wa1sWHdBrRaDa/kbUar1YIMokukcMvbuMQBdny8E4PR8ODkfzTS69euu7+XAjIyH+4uFPg/9CsBePkGWOb9fAAAAABJRU5ErkJggg==", "피라니아 튀김": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAEIElEQVR42u2UeWzTdRjGP9+u3dauXdfdg7ExBzgcjJsQIBxOQELigQdZJsohiohGTQiRRIkY/9AAiQcDlrkEFVAjBfEK8cANdBnKsa24rWWMbm1Xu46ydj3X/r7+oUIUFfzTxOff58nzvnnfJw/81yBk9PINRTarTWocR4i44iQqllFeUSH+rNm//RU5lBA8vnmLAFDdzPRd26pxm99BcX/IxQtd1/Fzp82QCwwfc+S9fTe3sbWjQ65fs476ZT7aLSGcXjWGQg39SemoK6pZ//RG8WPzKZlnfwPPsSY8gwpLP+oWf2v8dm2dXF7+CWKwDDE+iDjTzBWLj8wHq+mrPcjxljgzbtXSdCkVZYKWSa4+DEaFbU0azGet1xtbWltlSp+NjtZ3uXP2GERmL+QvRVr2IYw6wq0uMKiJqEz4z/Zi1CgEYkm8fyxCtl7FHc9vpmThuutv7P/uUzLCO1l6bzGqoiHiPU7k2VqCpz04j3Ti7Q7gbR5EowkTdMVJK9Vy4mSUghSFknw1oaM7r3pdNV40Zby8Ld3MYGMfLfXHCR1rJJqiIeRXUHRqIkPDZBlTGTEzA9uhHs5dSnBwr58TMUHkgRdoiI+myx3n2Q0b5dVT1O+tk+Mu7ECTaWRS1ZuYX99C0DvA9IIofleMokLQGjR0W4fR5whcXQrOIPzQF2fNKgM+9zhyVrxIQfIVhrQjGDN2rFBFo1EsbRaaT0sc3Uncf9dDjEoNkpOpp6stxNhpWgYGBR2dCZK1CX46r+Abhs7kPLxFBegCMRYuu8CVb2rQFk5m/8HDhMNh1D09TqnLyKVBFpBfMp09hZ8RMArSBoIc9oDyVQi3P0EoDuVZKs74BRNKVTw8NYeyeYKByEiazRYmLukiYt3KrJl3095uk2qAGTOnU+mqI79wPjVvhblFG+KiX0WWQYVaJblvSRpftCmY+yW7t+pRTFnEe+3sfsbHyk15zK7O58td3UyZ6iBcsPjX5+XmZWO39+Kau5VT7TaiKRoaBzWseEzFoqfijJwfoSM2xIHzCTbNEoQvS4bDOpJHlyJJwtkWIOrTUnR7GVZW032ph+Liwms57rX3SbVajaWlgxEZByjTm/ncnMxlB6xcG6XtAx1Wj5blr1Wi9J7h67qfWfJcMYFz/ajDw1y0Q7xyD5MXLPhjjk1Z6dgdDhYuniuMhkX0OFeQniEpmVNFp11D+fpSAqoYsVMnaajrp/KRUppqHdiyXkWpOk/knkOMmljx110hpUQIwY7tu+WGJ9cSDQY4+tI6UvXJVFRtZjgq0GrVRH0DfPvyo6w61EJNTT1PbFhNml4nhBD/XEINjd/LDL2JUDSMx+vld7miKCgSkpJU5GbnkGky4fY4mT9vjvhXfez3B6Tb7flNCchrXG5ONhkmo+B/3Ai/ALQL3MSznG+vAAAAAElFTkSuQmCC", "비트 샐러드": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADw0lEQVR42nWUf0zUdRjHX58v37vjh2aJECceSCKQkhfOH4xFlubC8lddNtJpttr6udycZW6lm0k6w4m61azVnLOWq2i50k2WjlWKqKkEZwoHBwdccHIH3I/vfb933Kc/KgdDn/+e957ntfezPc8jpO7nbtHT5ZEIQP6bZ+fYxN1q1TuJO9/fLgH8104T1nSEFCQlKUxd8JSUwPZdO8cBldFJzcfVMjfDKh+Z6KZEtpAwdBpSgnxv+NGiGraBC0z3N5KfmSVr9lbL0b3i/9EOVFfL+HAfPc0XUSdImnMjRC6FKHr+fvJzrZiCZpJ7Bmk92cOwliBjpp3MGbPZ9M4WcdvR3l275fw8E6V5Fk7Gern35UmYbApquolnDs6kceN1aq818ZXHw5IDZWx924In0oLq+oUPtr4nAZRIOCyfmGelvaGes5cvsXDRA3Q2eulzR1n2cxbCq1HqS8dSpfF4cTnTklaxYV8KzfEhTl9xUZgaYmhwUKqBgQAH99SQSMQJLJ6I1TaBitgGlqXXsq3EzXxngHjC4NlNa6lc/BJxw8CcFOPdykLaFMFHVaeY63gdFSRR3aBXhXU1GQzqQZZ2r6X2hzSeW3gU36smsuqzmOMop9fdylD/j9wzReNoi0rMrBHT4oBEkQiQglZNQ0nEKbMW8O3+L1hRsRhrcjINJ/y0FHbScH4HH37yGa8crkM/H2HFqny0HguZYZASVIHkwaIcGru7uGka5NeAF3tExTvcRpH9SZYO/MGOdQfo7HQxz/IWJ7bcx7oZ8/j6tXackzxsnJODEP8tpNvjo2b9SnpWe2jTO7BXprPt+HZSBvL4cten3HQ2c+3cIaqOh3Go6Xx+4zeieQk2l9upP+UEBEp2jk087ahkgS2bUMRC67kh3tj5DS9WlBE1Ily8cIbd+7bR1udl/5Fl/JTVy9mlGrLEzHRMPLZ8NbOKZwsVwNk7zNW675hVlMse+8P8qYYI/N5Ow80m1rRsRugKrimpTKvrwrFmBmqHjqv7FkeuX6awfOrYzc7LtMqVJVbKHrJxw93PkkdLSEtLxdffj2EYmBSFjq5+zjR5CEQM9FiC7oCBq88rxoAA3lz/ghzxOinOnoyrf4hkcxIKglshnYge4++AhhBgSlLIKJjL4WPHhMViYRxI13VKi+fIgnSBbXIaYSOOZsQJajH8IQMFCOoj+IJx/up234aMu36LxcKV1hvCNr+CK30xrnYO0uGL4PZFCIRiDI+YWbTcQYfPOwYyztHoaHe5ZFSLjtHMZhP5BQV3fG7/ADmrtCxWK0yqAAAAAElFTkSuQmCC", "해마 맑은국": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADy0lEQVR42tWUX2xTdRTHP/e2Xcv+tL1du5ZtlH9hc4GyGWZC+BP/xDcT8R9z/gengNEHEjVK4GGa4JMGMSQMZJKYqA8TAo4XdIuJMTHzD+PPNgejy1a6tayua+9d6b1t7/35oAGMsvjgi+ft5HzzzTkn53PgPw5JGOkFBcnppLg9D9WGpIX09jsVDr5/UADU1NYjzAICKBULZNJzQgjY/eZu6V8ZfnK0W3Qf6ebbH3+iqGcZGTwPCAQSTqeTxrVryOdybG7dILbv6ODFHR3SHUfuPnJMNDStZUltgImxUUz9GmVOOw5HGVhFylwVlC2qwhtcjVtRGPzlHFcvX6Fj18vS3wy7DnWJ9u27GDv/A5nZFOEajWXr2rh65nm0XB7DKAECZzZDVeRBFi19Bl+gBlXN0vNFD6+//YZ00/DUiVNC8QdxSRaGGqV1ZZzsXIobNyxcwU1UhdaTGT1F1fcf4HarTMQ87Edhz7MfEQw3c+nCBRLTCZ5o3yrJAMeOHmf5siWkZ1Os8A2RSkwSi0YR5REqF68HWaasfgMT4Y1ol0GO54gXDc5dO0x6Jk6kpZkTPScBsNlLRfFh12FiQ/00hucYnhxhaeM2ROgeDG0MLCepXweZ7T9EaEWIK/4Q860N3F/tp24qhs02juxezZatT9G5t7NTRgJhFrDZ8uS0FG7v3SwKNFFfG6G+qQ1t5mdGTx7AXBEm4Kth+Ox5hmYqkGQ7Tb+NwtnvELkhLNME8ecOH33oEXH0+MfEBzrx1D6At64ZWbajqVMkJz5Fke2I4THiCRX7mkZqlm+mXGkkf/ZdkvEsLfv6eKVjF599+blkBygVS1imyZJ1rzHy9R7S1wZwV6/EcamX6zNJ9PowXsuBv64WT3M73sURhFlivrWNux5uYCo+hWHot84mOZ0Qvad7efqF5yhlBhjuP4B3bpKGbAwrLzPVch+qW0HLlxFufJJyT5B0YgiXZzF6ycfJntM83v4YqxpW/dGh2+NG0+ZR5zK4lY20bvGRvtBH7GIvea2IZriwy05iqVk8ld8gxL34qj0kVA+xiQlyukEgELiFXnlFhSRLslCzWZwuJ8nZcipWbSO86S1AYJYKICwikgQWXJ+Oc3FsHFWbJJsr4HLIeBWv9I/oKYpCc0sLNlnCMAyKBR3TBNMyUdV5jEKRQsFEndeJRqME/ZXsfHXnTfTk28Hu2PmSlJ5N0/vVGaLjMXS9gN3uQJJlLEsCSUbXi2TUG/T39RH0V/3FbMF/+N47+0W+YGGZAiHAtCwsS1AqmfgVF3s790n8L+N3iXHCACNl8HkAAAAASUVORK5CYII=", "애호박볶음": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADmklEQVR42s2TbUzUBQDGf/e/44ADjvDgeDnjLUYUiQXCAkYoobHF5iqW+AIUDI1sS6nNuWzNmTmdsMhMWlMiTVjGazTDhaQMiQt5P7hDFFCPC0g47vCQl7t/H1wx59c+9Pv4fPjteT488B8hERem+a25RfTTqMjLK2Tnzjz81KuYnJgiKDQIh0PEar2Pu7uC6x2dpKx/ieiYtZLHRHdu9ot1P19Gbxhita+K2p8aycvP5Gx5NVaLBdHhwAFYZmbQBAYSnxhPfVU1BkPHIzJB4eZGW7uWpBejiXohAqWnEl3j92yU6Cit287bW+fIeGqGyr2bqEoTGGop453XUjlTXik6HI4VkdLDTRIVGYHUZZ4bzV9wfNvvFCT7UXD0GHNnSsjJ3sTSZm/m79lQZBeT7vGAV4UHaM+f50RpufivSCaT4eYip/zbRsa1NzH3qvFN+YDJrn6e2/gZfzZrUQc6oTddYaTiOOviMlE9H467dJT6uloOfVokAgiTk1OiXCFgvDPGK0ozKrkHxq5rjF5uo7XhEiXtEhKaBkgMM1FW24LP2ljqvqnGz77A4Td7GTQMMzpyWxQWF5a49EsL4cs6ejLi8LEb8OqsIbnoK1KCJbxr72XXhDulAZEc/bEGV9kcWV8e4PWPSxipCWVO24Btfh4B4N70LJOCjNSEGG4IAl3aTmzDnZh/raTMR83p7aHsGTRy8JO92C3TzA5c51R+Pp6uXhhlauTOzghSqcCG9TEkOy2xv+QC6rRlUjNWUXvsIzQHz5FmjWDs3ASV9iCCdoicMmhpO9vEvj0aWm+1gMITqVRA5h/gJwnwDxQveG8gV9dCU0gmKT4hbD4chfaHBiLTd+AklRNZsY+Z76zcykng82t6Yl3MDNk9UAf4YrtvezgtLzdL8mRwCPakXehLLzI70Itt8CqKqFiO5H6I1fUJ+pbXEKyY55k+I1eVCr4+IUPzchY9HV0rFwEoLj4pXmnVkiA34W8fwy3QRmzO+6hd1zM13I15qhuVRUVP1WlybD5kR8cTsmYdc9Y5/ujqf9gIoLBwtyQhNpq6u3KGnt5KbYeG9CMVbHlvG9bRdv7SX6SorpH68DfwsjgT9Gw0uwtyCQ5bTV9P90qjf9h/4JA4bpxAo/HGbLExM23FITpwOERM4yaSEuNYXFzk9t1xlEp3QoNDeCt7y+MiALN5VjQaTUil0kdyQZAQHh4mAdDp9CJAZGSEhP8lfwM2nn3e6Wbw/AAAAABJRU5ErkJggg==", "오이냉국": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEA0lEQVR42r2UW2zTZRjGf19P639b263raHeI27qNucHWrajjqLiLgcrJDEUUTfDCADeYEDRGUdChRuPZoFwpFyKJGIPhghgWBUaMbrBB2QqOdQdHB3X/rt16oKd9XixBjUC4MD53b94nv7wXz/vAfywhE8HbGvz+K/Lvc3FxibidX3erxbvvtEsJOIodwCxTAgH/NYmU7Hxxl7ijC/d99pHcuGkL4cAIkUgcjUaAmKVJKXlox0rWP1XEkcPX2PnIC2zZul3cFNjZeUJ2/3KK8sp6SotLGQj0Y1QMFDusfNnxPmNRH66GfALhBNkC+i5EsYXrcZe7WOBeSEtLqwDQAMRjMbIMOhYvaSXKFBfjZ5lT66Ju0Qa8wTOMpYepnpeLwaBl8/JWYiLD+o0V4LrEYc9BnM4yEonr3AB+8OHb0mg0EUqrmB0qtvK1ZOfWEklEGfeoOLMqCE2n8fgmGQz5qC4uZZ7DjmLQ0rBMYcjv4/P9n8obwO07XhXnB3pxu5fzWxAS4a8oyDpOOPAx6ukuCjMr6DliZkG1jR9/HiUVN2LPLqeuxsw9DfnsPdDOhk0bAdBmkqo06o271bSXkpIQgmnqy80MXvZyzW8lmZvHtrZVxPpGONlZg9ul4dzVPtL6SeJTOWTnpTBaLMzNc9P+2p7dGpBodOAokoxPRgjFdYzH7kdqZlB7L+J0ruHZV77m+Zdf4s2ny+j+tZUrHoVwKM1j9z5KOm4i5JMkImkQoH28bfXuyrm1hFMB7HYDzru2Ep3JZyqVTVbRNHmDXsJaB/s/2ccDDWW0NUVorrVgq7HjOa/j4cYnsdnyUGQpwUBgNjYTwYA85jlKz/AJGqtWYi0owufvYI17EVcDE1TnVDL8wxdEkgamm5qIjwvmLHyGHNJcFxkywQ4KNbXUzq0RGoCtWzazrGIF9WWNRGODhCfPsbhuLd955xCKTnHIc5yfLqiMZxSCvZcZYphEIoTdouBX/+Duwgd5a++uv4IdjUzLnrPdpAxxFLserW4ao2Ud/f4QFeZ+ei9+w+K6pXSc6aHGacJkzKfjvJd1i7YRGh7CqpRQVVUljIoyG5ucXJM4dfokDZUu1EsR1InrxGMD1JUUMqAWsKq5hctXuykwS5orm9HrjTy3oonRs/3oM1YOHjyAUVH+/cvqxITs6upkybJWUiLFWHwGk/Bz+twZ7ptXh1YjiSUkCjb0mDl29FuaFy6hsXG+uGnbFNhsYtDnkyVFXix5FoqULAQWVs5vIZlMMzI2gUZCFJXR3z0kkpF/wG7Zh3te3yUzqQSuxqWYTCYEAilnEMDQyBijo30I0rzR/p6444INh0MymUzzxIbVSATIGSRw6ND3GPQ68q1Wwf+hPwEzkbbyQWpXHgAAAABJRU5ErkJggg==", "양배추찜": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADqUlEQVR42tWUb0zUdRzHX7+7H/eP4+9dEXj8i7tD+RelgIQpZlgL3TTnmkY9IJ601XI9oNWjamtEa9JuTSJMVm4snlg2TVtMaxICBqYcHgrCoQL3bwcceP+A+/bA9STLdOtJ76efvT977/N5v9/wH0MSEf8DkwJ+n1gOhTCsyZT+OlP8G7kgyyzWZZlFQZZFfP7JQeFzTYvEVCOJKQnMu13ivhQePtQmIgE/zjOnqFmjwRuOIcfFkbV5O96b01wLhHh2Xx2WgkI0+kTpngrbW78Qmxf7eDxVwEKEk6XxeOtUPLpnExllFcTiZ0l3XkIbXqTjq8573/DVshKxu8qMXTWP+aUiso0mwpEI0ZCWqrU7mL91GWUwyoqUxs/H2ujvvkFV/QH21u2X7lrY0faleEE5QseMnf2NHzDsOYRVtxOFrMXpvEB42IvBqKHvl0k21uzCVFTND82NJM/NcaO4ltffelMCUFyxj4iZ0Ysi3H0U2+UhLJsqcbi+JltfydCVb5kbcaKfuEZhaTKaBAvq1Ez0ah/S6jJrtz+HPbhC5Kcuxh2jAkCZpIp7rzw0woLbQ3VLDbL6IUzxRaSozBhvexi8sETRE1noZS967Sgm8w7i1Ve5ORVi3jWBwRhDtxCh/UQPu/e9+L4iPSOdgd6LaHUa7KMDuP0OCMLwmdPMTE6xa28+qdlb6Dl9FZXKStBzCt9SLrkZo+RZo8gqBbJCwTaFlzcaXhOSiPg5eviIWD7bRdpOEznFZoxESc0pY7D7ONcntKh1y2wrixGJmZmZldHqBQajRGJSgM6W37DEJLp/n+b5Jtsd27zcUC9p1teQM+DDIEwsOh2AYF2emkJrHAmLfTS3ehi/ZMd2/izZG14h2drA8Llp0gJBWnpmaTjyDRVPVkryn++eCkS47Qry2I+9JJSXMTv4PXqDnoLNBeQXK8mdtBKVDdTrBnE7h5FYxdnvY3BsgfwtW8nMy5Pu8qE10yKaNmZQu2crx4ccaNLgqepE5l1uVLmNPGJZz9ivJ/mu+WNqN1g41jNG15gfx61x6W+NbTtoE8UL1znXc56SLAMDU3OYEhToDDIpGbl4J93YnV6sDyfR6/RTWlHOAdtnkqxS/XOWWz+1iciJTjKTNXiWoiytxJhaXCYag5gQaBQSK7EY4VVo7++T4lTq+6uvprffFXNDvYQCAQwamRUB3vAyAVSUPP0M73z0ofTAfTg5MSFWIlG0yjsdEl6NIclK8iwWif8t/gCffpL05bvYUAAAAABJRU5ErkJggg==", "레몬구이": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAEtElEQVR42t2UaUwTdhyGn57aWouV+4io20RQPOZ9JDp0Oq8YzcQqEM/JUCdzUzHOOJQtXpmKOieLDok6hXnhgk5QcUMEHMyJHK0KQksHRayl5Qb578Oy7INxYVn2Ze/nN0/e/JLfA/9RJKLV1uVye3s71mqrkMllePt4S/6uK+0KsLTUKB7fOiFsteUi7fQ+EiLfJjc7T/zrxVP9/URS8lE8/V2Q6AbgKLrJ0nc3kFphkfwjcE52rsjJzkUmsyGxpjF7eDWe43bxtCCHcqsHAf1s5JoUXP3iW1YkXmLchLGSLp3i+MkrBDviWaX3JXJJM+79uyFvicVWfodRI125l3CBYRole+PGc2z1YpwOh3gluKmxUWTevi+q6lqEV7sZpWhA0dMT4RKKXDeammI9hWXe1BYWMO3AMUqNj9C49WL+9ABSb5QSExMn7PZ68RK4HZVEo9Vwa/VUVs7ry+kfuoOqlLa6TEz55XgEP2DhZwtRyn5jR9Q2nMOGErrlJy6VNFJx/COCVU0g1/y12Olwiq1b4kSFuVokx+8gNGYBdTVw4MsojEmneaGNoMFawQtlb9osF/CY9Q5rVwzHKzedbi4+ONpaiE7QI+1bz70bGUSv2SSe2+xCajZVERAUSEzkcsIHmJH5T0TbU8nO7an4jtjM5S17kdfpyD+SiVpTj7TjHC905WQ99+HnBxben9zBqhOpaOrNJK1fyegJYzAajMhVahWeHu5YyozUV8rpfFZMlqqTtQtfpx0t89csRtZk5WTiPeyxRuSu7pw2ahnUX80AbTMtpnb2hfajs9nO034KPLz8qLXWIulsseFoaBEjA4fw1ujXiJsJuvF6pL5jqbyaRI/OWjSaNtIKWnhSYsFn4iwePXzEUI0Bk7oGV60X5ouV9OkFxRUdbMwyE7VkGVJHQ7N4am9i+SeHKK9xsj1DQW56HpfCQlAo7SR9dZf955sQbsOoUniyLz6ByvRrOO1NrIvezZQ+GmaGSEmwy1EtiqehoRFpdw2ypWGhsZevZDJvTggqnR/nU1JoV3tSbKjhoXsQA/v2J9A3kPvX72Mqus3X27yZs2gYjc2CjHM5TJg/Bnk3KdJKNcGzw7l+M4sI/UykAQMHSCwPC+nn78706ZP5/EQ6kx1PeGZr5Mapa2QmG9AFdDIjfDhDVEOx5FtReauZtGAwrhYDKbGnKD+Xj9ANZuqUEZQ9yGPkqBESKcD+Q3slGzbuQqFUcHb2PBQjZ7ApahARIdNwVTzjw/hEenl7YpI+JrPRC1tRHgVnCnDxk3Lnlw7sYdeYu3Un0et3cizxyB/vLVptiFYbjjqTiNkQLZ5XlYkryQnCWXxGGA5OFmtd5aLekCzWLXhLpH26SES4aUXGEqWIfUMqZvRUipy7ReJpdYW4kJ4nHHUm8SfvJQl9sPmwmDs4iGe5v2KsrSDsvTFkp6TQW+tNmUWJjz6Cku+PoZDJ0Mfuoam5lYOHk5j0pg9hEXrJK+1WXFQibv2Yx3dnzhKz4xCjAjT06K3FWeOguaMTF283nlQ3U2io5sTujzmXdhFrVQVBgwZKuuzjZRGRQt1dzfTwdfj5eiCRgNls5dI3exACEk8elfC/ye8ybyWwvtJ06QAAAABJRU5ErkJggg==", "호박전": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEUElEQVR42r2Uf0zUdRjHX9/vHaCHwCk/vLs4fgsIw3kgDM80UWOrFMs0dcJkjVbaytastTVXaLn8sdxqbS5dRc1WGc2V+AMwM6ahCMJ5HCAcIAIi3h1wd5zcHdynP7S1llp/tN7/Pc/7eZ49z/a83/AfQxJexwPJ28PDwu/3I92L1TPV0nRV6EMHKh9EmE0touHiZRy3h+8WBgXx5DNrhfDdwOV2kpOXJ92vT75fcknuAlFx+DBGo5FpsbPZU/UDsdYK9pcUEq3V8nNtLdlz08Q/nnzw449EckoqWfOzaTp3hHkTnxCtU8PEOO83x4DNgcKuRLdyO6uWFnK1uYnOax1s3fbqn9sKrwPhdfDxnh1iZHhA9FgaRdHybDHy6SPCf1wjbu6OEhs2p4jB1tXCUakTCRlaocnQC0tDnbAPdAnHcL947+1t4o85kvA6GB0ZFZ99W0GXr56V6TfJzVLTZQ7C6uzDYgllc+5s4m9dIDAZQlDYOH7C2dWmoaCgHEN6JlarlfgEPVqtVpKE10FpcbFYvT2forgWhDIL74+HUSZpsYZJfH2kh1cCDiLLFiGHqwkEAkxV19Fe6+a4Pp1hk0RhURGXum9RvmefJLdZWoVmdhQp05RM2RMJnP+cqrNjtKmmkxoTxTHVTBpysploHWT0yK9g6yUQHsadTCUl+uns/WoXnt4abDeHMLe0CKmz9bIYczupb99PWaCBbzxqNBmLiHU2kKpXc3VWIV+eruTN6wPMWmNAecPET/UyYX4/izetwemMwTveh0K/ifEgLXJ8YrIUMzOKpsEI2uamEjE3ksd1ZlLT9FiHnMwxn+aleSqKLQomqs5x/qgLnyaXpTtr+PDEJZQJBqK1Kr7Y+wbJqemSYl5akpi/IA/fkIv1uys5tD4cMebGPinT2O8mIS2ZxgYzmU8k4bEqUOSsICY7mSh7I6Y7NvIDTbT1hJCz6i1Onqp+V167fp20tXQTixYYkf0BXL2T9Fh8HKiLZ/XiAkI9Vp5alsqG+XEcdwWz0JiCQZfEwkM1lATLKLWLCZ8WihwWQ/e1trtv4xwdE1euNHPuaj29ooZj3/XTcXIDs8av4+kaJEQThr9/kh1WDzs0KlQJWTjMw0QtWcud7jouDGUxIWSeXvesJAOEqyMkg8HAyxvL0NnzEFMBdn1/GiJiUWmnUAR7cSQpuNTuZkZuKbYzZ4he8w6+7kqGZqzCJweRkZX5V+ldvHBe/FJdw4uvbaer1cTOswdJjHTw+nMaqhtcDIb6WDYQjCFSEAibw8laE5rER5nzWAl9fb3kG43S37TsdrnEuMtDRGQMnddaudj8G+UV+7DdnuRo+Qe4TaeYsJnovu6k7MApTlSdYGNJMRFqtfRQP+zsaBd22wghwcHoYvWMu8aQJBlZlvF4PNhHRkmIj6Ozq4OC5Sukf2WwzrEx4ff72fp8KYF7RvXCli3kG404nS5i4+Ik/g/8DgyX9Ba61EADAAAAAElFTkSuQmCC", "오이 샐러드": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADWUlEQVR42rWUW0zbdRTHP/9CQ1fagVKoYwwQuQ7HxhgEV2SbEgZuzOgkUxIyfJjZEhMzNDFbsgejRo0PmGj0YRlTcGxMhnPiBeYlQYwtWFPGtaNqx21b6R0qrW3/Px+I+DDRFz2P53zzzfd88z0H/qOSRMi95tBmvS4ud3YBUPvofgq3FklrYRV/1/y0q1sUZ+SK408eJDrZS3Sil1NHGinOyBEdre+LfyUyG03iaI1BrLNfZeiZBNr35qIwRuie96DeGkPjiRwmPB/RsHO7MBtNYs3VXmqoEk6Xj5ZKNQq3AzmngMjsAm+3xZPasZfCIhUhT5gzfe3oejWcPHsFjVYrrSoaG74mjlaXiWjsMlO1Ht78Ts+Aqxgxd5OYgJOdyQ7UbX5uLkySvmkjI7MKlCkhmh97CMuQWawSffFJD4b8JG6M6nmj/AJx6mrO92ZisAgqfgqzMJaN/4MR2g5PYT6t5J26djapn2JLagLdFy6ueDQ/OyfEz19xdthOzhOZmJ/u48toO9s6fqPrYjN7XiylOcuGSeGhpUlHTdxnvHqiDvsGDz3XvMTdMnF9fELESoDTE8QWDdN0xk+C14t+VsnUoXmyHGYGB11oHl4mYyRIykwUWRGi8y4nViSMSLj8IcSfq8kIdLfAuehkcslNMC6M5RsPe859y67QEsmOzShtLzBzO51AwSEU1buxKoaxB13ExSiQgFgAbyDC8bo8LiXOsNyi4vUGmS2FevAFaZrWsb3kWd5dPs3U3VkYfCbqXSrUV/t5flcuYzeWVjzakLZRKj1wmEsDdh7x6dh2TiI1KYxYF498O0ii10L4lVYe+D7Ac8fuZ3djPbqvRxkvyqZ/xEH2g4+Tu7lAWs1Ryb15Yt+OFPIztIza5sgsCmGI3MPHHyopj+Zjdc/Tp/NReSqD30fncPziY2DMzdCvVumOQFYVFoj6ijR25CXxw6iDfuFCVMkMvSZIi2g4WKqiODeJt66M412S6TH9iGa99k4is3FQnDx2hJR4QW1ZOv5AEAUSEVkgAKc/yPi0l8UgvPxeKyXlZdKa17+0uCj2l5WiT4zlvuT1uAJBHP4QsiyjVSmZdoX4fPAvJf/4RixDZnG5swt9YswKCIgKwYJPpubAPsorKyT+r/oDoraD5NcSAfoAAAAASUVORK5CYII=", "양배추전골": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAADuUlEQVR42u2Vb0zUdRzHX7/f/YU79A6OO0SwC7y7wIYSVkwj+zNdQT04rCflMrGiprm1SrY015ho9m/Y3JyCbeUfzPEnlvPvauYflOgUEUVk3EoR5Y5jHHB3cNz9vj3pQWw55qOe+Hr22Wd7Pfq83x94wD9IYmLonsuk1GxR1zCHHadkpA4napWG7q4ONBqFq57T0n2Lq77YIDz9x5DNguJiEwO+SU79EsbnieDO1BENx7k8ZKAnmEjtji08tfhJaVrxHOdjYkf9UoqcLyJL3XzSuI/z7UHsrSGq8scIuBaSGepDycjjyE9n2dufz69H90uJiQlTPPK/h8ot1eLRchUatZebg+uJx4aJjEPNS4+w3R3CMaliTqsHlTGBsZxc3Jt/YHX+TZa/vla8t65C/Kf47t0B0dh8hMpX0lhkz8Fh24b3dgOLegJEGlsQfgWRo6L7lkS08B0yHpqH0Ogp/aCSZdnX8Vy+Tk+vV0wRd1y5JuY/8TyzTAnUtwdQyfnoNBY05ydwp/oojChcPSPTM2pBXzgbs83One4/iYh9JFodGBPDFJj8LH9tDZ5LHQJA9nr/EtW766nbW0uJC0IxQau3jovHNzIjyYB6WAeWSbR6gfPVrVhuw86dJ9AN9mJQlvDjtkr62mHJXB1bP1tPxaavudLZJdShcBhvby86rQajVmHBnRiuh0uwueYiTcTojR1jfMTDwrLNSLYs0qtP8tb2N2lqCND8+2EyU2ZQWuyi9sQg5S/rGBkNEQyOIGdkpJM8Q8OKVWv57baEOyGGLS0PKdVJpKEG7YTMRW0ZVTubUEb6uHDuDDWzs0g2mllZuoD5ixfQfLwLX3CUt8s/xGTU4HRkIZtNM6XGg7WSwagjrHfR3G3Bf3Y3YvQOHWOdGJ9ewRtSC5+/62b1ugpM1zYQtrbxTVIPe462szRXxcZVNvQZ8zEk6ThxuE6yWlOlKXe8qfJL0TcQpmxWCwXLCgnJDkz2x5HN2YhD1XRZ1OwaOkDLpRFUkzJFwQjp6kxOD+Zit1vZ/lWldM+AzLQ5xJr3P6ap/iD1JV6STFrSVv7MeP81Og99SmqKRFFbhNUGwZ6TBublFfBH2zmCAzekaSO9qvwjEQhOoihxAn4fy50xotFxMnNSGLjh40CXHhGPYUq2YE1OYO9330parXb6rohGozjyFgm7PYdwKERodBhFKCAEQoAiFJR4HH/Aj/9Wp6TT6e6v3S60esT3+w9hNqegxOMoikCSIB6PUfzCszz3TJH04EH8f/wN5i2ZqMLcLh4AAAAASUVORK5CYII=", "레몬 세비체": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADo0lEQVR42o2UfUzUdRzHX7+74xC4H+jxcBjc8XBCBOETOChXYlIZjcaajNaQtZpurVXKnM6tB9cf1ZbWmgshwLQmjrFQp01q9kRpMj0QYkyeTjrgODieDjg47u73+/a3otn77/de+7z/eH0ksTzNwxIIBJhwjYsEc6L0oI6O/5EjHx8WEwYb67Ul4u19794XpvkvQKo5WaSak8Tith6kTB1qwTVSzEnCakkW93ale6dVV50QC1OdQCd7dhewt7YFZV04Q3YPpqQIEhNlhF9g6Ezh04NfSfrQ0JXTqqtOiPz4KqylpUgz40iGdJbcjfQML6DRSWTmxtD2k5NV0SEU7AjnqafzRVtbh3TXRd83NYnwkCsUPrOZwNIiPscpJsLe5OzVdsJu6ohLTOfMr7Vs0K5l5FUfql6QkCijv/g4n31+VNIA1NZ8LZJCPqJwx2a89nocPQ0oEVYar9l4Y3sl+7/8giJrDMfLP6Tojpbtf72MRq/lx2/t6Ge6sNsHhW50eETYfztNcqFgadqFw/EsQdHPhR6Vt174gH/+sONhAENQZfBkNY1ygLpPKjD+aSTl9Wb6TjqoKClC6xnrP5Jnljgfo2Gud4CWShtZtjjk53bhPfcDkU9kMfK7C1kaZ3htLEpGNOYIEznZm1i4omXK0kvf9Rk0HbZ2fnFNEpkWRc31IL1lKYwWP0nBmijSC/I4XFPJWLILZUs+G55/kfW3FRqK9+IavkOsJxzL6kgidXo0vmWFDF04jp8nqT9UxcWjl9i6u4Qpczr+JR9eoSNCllCvthL/iAk1LQU1VEvcY0Hml76h9dIQ/qCCNDLQJfaXF1GSG4fZuo/MbVb6ewZwu1ykZmURY0xEr8zj6bQRNjXGZM5G1m01IWZbqH3/Aq4FKH+vHl3UmiiiLNl0DQ3i9NZx+aZM7o05OqZc3KjLYJfzHVT/DHKEgfFFGcfMKTjfjW1gNQohjAsTJlM8OoNBlmq/O4PVkixe2qhyoGITx9w9tFumSZoLo7iplNNZxzk2cY5O0Upog4adCSZyMmQu945iyc3DGG2U7lKkck+FCLpuE6bX8KjZgBJU8QVB0gjcsz6M4aFMewP0ORdwzwfYWfYaBw4dlFa45l9eJj93izAbIFYOIS5Sz7xPQVVhYTnIckDFs+in3+3lVnc3BlmWHigtQMUrZaLv71votRKGVToURTDl9YOAtKxszjY3Sw+1H8AzOyucTud9X4vJFI8x2rgC9C9yCZEePGf9UQAAAABJRU5ErkJggg==", "레몬에이드": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAADbklEQVR42o2VXWxTZRjHf+ejp6drdzq6rVunbkw3GAHNmMQsMsmMC5IIcTEBvWEm3hgvDJpAuCHRC0mMUeOFiVFCnCQQE6/0CmRkxAVBQOUjY+qAjK5bx5rSrh+0Pef0vF4U6upK4U3e5Mn5P8//Pc/H+38l7i1RuMPDll20icTmxOrWDqkaLrkDAKgrkGISECVbWVUBffbD5+Lq7HmeeWJAbN7Qz+YN/VXJV5B+u/9d0eyWeK6zhT+LTbz89v5y4MkLv/Dq4Fp8bdf5dPQEa/d9KYz6RrS6hgpy6f/pX5s4IaLXp+hp92IHOunYOFT2+e74UXFm6jh7tupoNxdKJZFb6XzhILoRlO6nL1Wr6T/nxkWgSZBOJNAbegh1r//vT2LHBH4DZAMUP6QmGRv9iqE9E9VJvxn9WrS1t+FyqVUb5eSSdBWO0b39I8zZn9AC3dgWqOnfOfsrPP/mYamiph9+/IF4f9976LrOjcgcUvI8UjGDY/SBqwEAKx2DqZK/K/QiyAqK24L0BUAuH1628vk8omgRvX2LNa2NdHQN0bnuNYKeAhQWqHPZ6Gqx5JyapBAZQzgWUn6W+XCc5tWbqnffcCvUKy4kkSOTtwj4DMxCGvfVQ8haHe6iTXR+ie7Yz+haM0R/ZD4cR2raTVfPSxK8s5L075lb+KcP4uh+gr0jxG9DYekaT23ZDVqIxenTdLe0MHHqEjknSSRmsWXryD3CB8zpXDhORyiA3tKHnDqJz9JoqrcgJ8AYINi7HisT5sm7n3D5pofpRT9v9b8uPXT4Zb0N2d0AZgSvyyx13bFJJWewhYyYP43XvEM2bSCEUXVKyo3aObwTAH3NXuzkX6D6wRUAVwAhyXitSZy5U5iLF8vBw68M1yZ9tneTVHSKCAHFuwugeED1gepD0QxcSp7gqiSBBndpvNp30Pv0RqkmKUA8vYQjnGWoD2RPpRJpKtlsoaaayTVRJwNOrjJAVXls2xePTnrl4h9cnplFCe3CyYYhV7lNESIbXwTAq3lQ1erXueLr4MBg2c4vRZdLQ0lqzRskogk023l00vtO8ZSFZK7DNhMIK7usoDKevl2M/TaDF+2B6VeoVCaTFoeOHmbb8HYeb/SjYIJjVrhPnL3C+PgZDuw9gM9XL1V7Tqrq6ZHvj4hajRh5Y6TmG/UvY8BRlLnsWOIAAAAASUVORK5CYII=", "쑤기미 매운탕": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADh0lEQVR42oWT3U9bdRjHP6etrNBSCisw3sZ4mRDGYIM4mHPJmGOiEudADRN3tRinCTEx/gFL1AtjotmML5gZsizLwsbNtmgmiktYNplAebOsjNIWpAxX2lHgnLbntP15Y4gJDp/rbz75Pk+ejySiQf5vvFPTYntpsaTT65+Y0W0GCCsK0XAEizUNr8stNstuClIjEaGpqki1phFRwpu2lv5rtc5vu4QtK5tMSyoTTifD94bYlpfL+JiD9jdbOHGyTdoUdPbcN8I9PY9j0snsrJua6t3ovV7y5qbxSknUnD7NyB+TaELi8KF6Ot5/bx1o+De1IL+Iu9d6sU6N8LxQeTEukXHUwMBvZrYsqjRYZFYfDXBnBi7OzWPNyBAn/2m33qjxcLPITjLTkXqftCyFpMEAPTtNrK6m0tr2Bg7HHLsfDBB0+bH5EnyQksujtHRGx/ql9WN/13lBVNfu50ixi5qPjlL8eh7+ZDPN2hZObYuhLvqYD6lcYTvuigKuv2yktWiZTAk+/uRzAaBb8i+JwaFxfvrxBsfr9jM/0U/31SBVLeVMTUAMDfniTQ7qXOy1KYSlFA70xmhajfLMopvf79nxuL1C13jkVeJxiIRlxi/f4LNbf3FQkZj6woV8fB8/ZJbTWSdROevBhoEGfYD6rhYsTeXoDBAKrfDcs40YWl9ro7+/n4LCEvJ3hviwzIhxVzM36eOFXYX4nY9xPdxKwBcmxzuD4VAlMWMhaqnGYkECWZEpKatA/9i/eGZpKcixV45x+9ptSgddzGRZ0CUlM2Z3sTQ5T50vyMJbyRSOphAYfYhlpY8rVxeYyK3GHwigRWX0rin7mWH7GL2//ErJvgOYxCwNwkPwKROpjhmaivRUnSyivKGesORA/nOFNSd0WSsY9XrYs6eKnp4LGExms/R0aZHweBe4NTaB8aV36Bsa5t2RfvKrqhF2Ow8ia5RYlvH5VLoteUxmVzLjcqKTdOTkbCU93Sqt/9G5s53icvd1FEUh02YjEtWo1a2QkpRMSEsgjBEGAwZiWpQ1WSYRiyGQ8HhGpQ2KFJfUiB07SgktB1DCYaKaigQgIKapxOMaBoMeIQAhuHP3Z/Lzc6UN9n/91afU7i1HlteIxTRMySbisTiqFiUh4uh1eiR0tLef4Pz3X65Dnmi/w3FfvH2qg+UVhUQiQSIRBwEms5FLl85TUVG2wf6/AQLeojUTmJ+dAAAAAElFTkSuQmCC", "토마토 파스타": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAET0lEQVR42tWU/0/UdRzHH5/PHed5IHBwwPHlIEH5InLi9zTnavklcTobxhQzRSs1mpaROVdq/pDOsi2/zOVS07VSLGVgDt3EqRNUCBmgBxzIFzmF40vCHXf34fDe/dCyueZay198/gGPPV+PPfeC5y2SUHqfCej+vXYRHmmU1Go1AOr/C9z16TaRq5O4UHeL7iCTyNu3X3om4PXuFjTV1SzXDCHy1v03FU2NVlH8cwFCLUFVCUuyM7CcvMLkxkrEgJeWdi+hOgnvxJHsChzNvmNHpac2zpg+Q/ze082WL3ZycetmNvY7CZhlQNPqRqs38OKDWgjwo7lRwZQcQNOwCCKtD5j3yZs0WCziH40LTuYLtUom0GBEqxKUXrlMrt6HXF7MYLWdIfcQjm4FaYQf/m4PxcFGMs6f5k75JQou1TIy6CFzV3/+pAqfkLDU1IqC/HxW3LuJiE/F0O1EbSnF1e5GjlBjrVJIPbQcd3U5K49Usun4UYLCTYwea0aj8mFrbSM6LvZvFQUnTwmVSiZjWjBJ7SXIF1owTG5j8BEozU6GTU1GZdAhzUuioa6UnYdrWDXBn9CSg4RmZnHpXAsOh4PF2UslAPkvcHSsiZcT+lmRtZKFbyzG8PYYPH7xyLoQCAtEzsulPi2GI9/+iKumlgOLopngltFqJlO5bTvT9FYSklIeXy8rHg/b8z4WyaljOfRTNZszX8M3chTy4k1IKWkMrVvEqTQjpd+8h7PyLOat0WxL8Ec2B9LpBF9XEaMXbqTsWAWJyYlszn1fuAYGhGpZ1iLhUrwE6ST6bn6Pz5RKXFI6vlVrueWvw911A9s5C7HNMvU6HcUDHiSTjqhrdmYcXMrDgZkojiJC7IO409OR1ToGPQqyBOj8A/A6erHb2jEPH8DXWYVj9VzGVF9Ge7eDORNe4szrIVSM92N9iUCvVtGp1dG8+yii7ks0PzQSq2llqOc+Oq32TxURUVE0191BH5NIdm421gNn2HXgLH2d/WiCjYyo9yNkwyayrMFsFwopH8Wz57Yg5Z7CoDwHP7UBU2EOLcZI/ENHUV52nRcS4kEovQilF++gA2vNDXF1vkY0zA8WtjCd8B6eJ7zTDeLaq7OFp8EinIV7xdDF+aLCYBAtUyKFd3qIqNEPE8rxZPHbjmXC6+p5zHu847aWVmGzdRATE4XqYg7913vw9jpRAoMwRvYS8UoqHlcAnj4nstfLg1+6CKntpCMyBO2KTNyTFlBVUc7qdWuenJspLlb6tbCIpsZGgjLz6VmyE/VEI+M+m0VE0gg8VXcYbjZz+2oDQbOn0hOrp9D+iITT57kfN5OCEyfIWfOO9NQntGX9B2L2ggV02Gwk6tVorGVoNCpMs8x479bTxBRCbVfpCzdT1uYibfw4iguL2PHVbulfH3233S667V2sfSuHdzd8SPqk8Wg0ahACIXxUXK/iu71fs//YEcLCwzCEh0s89/kD8mbk8M0hhAIAAAAASUVORK5CYII=", "고구마 조림": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAES0lEQVR42t2UWWxUdRTGf/fO1nY6pQudTsfSBQYZ2lBSohhalUoCSlBiVJaGoOJupIBLBHwQQgRDDNoYI0RSVgEJIIawBAMUSoFCAW2gZUqhe8ehtp3O3Hb2e/8+EGNMQeKjfq/n5DtfTs75wX9Nkgj337fo7uwSAGWlU+82I6EJQdJIG98d2It9VJb0r4zPVZ0R4Rt1/HxwH4p/iPxUEzEVkMAoQ29QRYloPPpCGfZJUyiZVjpsgHyvafWnDjNBuUxsQMGrxLjcHaEtYKBtyMDNQSMNd4J0eEPkNB3j2JqlKH6/+MfENVWnRfuVszh919hyrIn+UAQlEiQpx0DuzFzGpJVQc+ko2Sk2fq1ykRFKoChZEDbIFC5bz7RnZkjDEnu63aJmw0rKCmRW7r6C0V9AgbGE1QutJHuy0Wp/Q1MvU1xUyLTZ2by9ehE9xRH23/aTJuk4ufZjml1NYphxWpzMgsdsvLViN+MSnHz0ucLybT5qL0yia8DHjYYwTeey2L62itCAiaxMO6uWvMG88ic44w4y05nMzbMn/77jb774UpS/W06DPBrXQIgkg50UZwaK20d191kcY1QeSorD6PcQRUdXRx2HKirJtk5n4oximoNR6t0BjlduZP2nawSAHOv3iDmJt7D33KL9ai1LX5lFeGiA87s09lVFUKKCQDhGY0+QU1ebsSXHU7+plRUjezhf9hJXL1ZTeXodLUqYiekmClyH8Vy7IvSyJPB7fkdDolsJ83imRtuodr7aqzLWYSYvNY4GTxBvIEa8QcUUlVBNiVQ3RZmRpbLz4EW+PtqIToAGIElIgOz1KvT1+4jX65gzfgRbd57gROsdZhcZmfLiq9R3DhBSNVLMJp4tycccb+Z6n2DzdZnVtUnoTHORWvUsLrYzFIVOX4S+kIpsSM0gYdZ7uHoVBjU9de4gG6bqWZjZi2vHZygRjZK8VJ6f7MCcnk2CUY9ktvHk02OZt6yUDEcjefFW3GGZxp4AjyxehTUn76877nO7xfaXn2NucSY/nnPxjhM6W2Ns9KYQM2g096vkWSSq2wPkpEtsW5tJkjWBQz8oFJqS2VPdycVIIkfqLkgA+j/PI85ioSN9PD9dcjHemUtFfSuJIahWZJK1IXqDKm6fzAS7heKReg7vyEbYrmP3j2BvSwedaQ6+37pl+EubLRbJ5niYTJNES7uf9/ef4PV15YxKjKCEwjjMUZyWCOaYj0seP7MmhcgPjODALz3EYhLW0Q5S0lKl+0Lo2w0Vou9gJUJnRKiCotxErBY9iSaZUERQ3zWIEorh8UXpGowBGpMXLGLJJ8ulB9Lt9OYKUb9nG3oJbvkhpEkIBEITRDWNrPi7pEPTyJ/3GvM/+HAY3fT3olvpm8ukmpY+MS4BBs+fgkEFDfCGNSKqoHVQJSu/EF1m9j1NHwh6gLbbLWL+U9OREAgBMSHYdfwIVlsGKWlpEv8b/QGzMfbl2Fcj4gAAAABJRU5ErkJggg==", "키위 소스 구이": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAD/ElEQVR42tWUa0yTdxSHn7d930K5WCjQFidTQVBZZlXqUJybZkRRNIoiotFNN5mbi84PkiyLF/iiu2aL91t0mbio02VhGTNTcWrc0Jp5YSC6CVIoWOiKtKWF3v77sMxliZlZ9snfp5OTkyc5yTkPPCmRxIDrXwfu3P5VHD/2FUaTgbLXV0j/Gxq2vyhQTJC4AwJNOL8vxljkeCxY9ahm6vw88eH+t4QzMBm0MxCdxaByo8/bwOcHPhYed4/Ytm23uHzZKh4LzdmQL7z+IGlTdVwQ1xiz7gwRWyWStxF6jyIFzjFtZjH7du9n4nNjSE01MeWF6eKR6/t8Pj75dKfIXCH49lgH5xqvkm6W0CgwxKFh77w+el0OrM39jBip44gtxLLcjbhavDT94qfDr2LVqtdISNBJD6FLlr4qNm96lxhtFOPLZ3NUMfPOlZ9oTFG48b6e2uowLl+QuPwQlmwjDVeeZVBmPa33Wsi5KNFoKKHNp+K9rZUSgKqh4ZbYtWcXztY2tJm5ZIinEddtzHIGOb3WhfUOjJ5socAcQLKHsDbdx957notn7bg8arIXFpOqtPLMqHRu3KgXALImWoOzs41rp2o5JOBwS5j1tnbmVk7BNuQmdSdMWOa0oBsaS4YcpupkN113Vag1Epl2HSJkJUgaP1cfQq1o0Wg0QpWeni5FEESKZOJS1Bx3tHCwegWdaVeJqDSYzAGqtqrodPVTc8GJ7cc41ljiObm4kJJhg9l3z8ylpge8XF5BbGw0brcHGSRCoQAjFAv+noNM311Im/iO6IFYfjjnISE6zNgZ4PVGyBE6Ji2LkDVxMZH+YdSLOO74v+GV5QuI1xuhywMI1N5et8ibNIEzR76kbJaDmLThNBht9Is+otQDTBuZxJh2AzPjUjCPm0tUXRv9uqksLd+P5ql2Vq9JIiN5I0kpJnZs38cbb66U5KK5hSQMSiDDNAh7v57ho5LwOMLIZ7RMCQewJGagzh9Ln93G7TorO8/34aj/gDmLYphdUEmMOh69Phmnw0VJ6YK/7zQ3d6r44sgBimbPx1qzie7fGjGmxKNKnUDY56T1d5lD1TdpqL/OS2XNjM6Cu7YIy5+/iKw10tPRROmSlZytPSX94/erv64WOeOyOX6yhoWFeTSf2Mz1SDYuXxh/UMJkSKZ00TyiUq5i73EzyrSaSCTIR1u2kjVyNAtLSx46Qf6rmFEwXVIUha7OduEOKljW15Dt6UKIMIoiI8sysqyg1o4nS+Oh+VYDnx2uYu3b60jUJ0iPtVRFxRYRHPCj1UjkT8tDJYFAQlLLnK69RJu9mz17t0v/WX29D3pFR+d9hgw2ABKCP71h7+jCaDSg1ydKPPH5A8iDsiEaOfjPAAAAAElFTkSuQmCC", "청새치 스테이크": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADy0lEQVR42q2UaVDUdRyHnz8LLnLJcqyCR+AuV40wiSMQpTYmFVEyC9QYDl2kyQyOVjQl0ZsMbXLAg0orBRHTMZwxTQuUwFQ2zcHVuA+5495dWNwD1v31SmeYqFc9Lz/znWc+b74fSdj0zMY3xeXCS25gfYzA6BZJcdltPDzd2frORmm2e6fZwvIzFUI9XUpqSiwui+Pxm+fMa9H1rH9uCUeOnRb/KSosKhFXf9eJzO0FwjxYR2z659wds9Lb38DwaDcjPmoUU3dw6/2WzLQ14tr1O2Jv0VHxD5EmVYOn90KeV17hlZdjkEtmFsr6CJwfjt7uSsu4xNyAFajH3Fir7URf/hOpaWkPGzmbzRb2HzohNBoNl87+zBPB4YxUfs1Yt545URvw8G0lyFtOs0PCOvYXvgO9BGsS6Kstp6HIi4NymcjJ3oisu39CvJqewc7sLJ5VdBK/bAFy7xAOlNYT6zVMydlWtNou3kiJxtRQif5UB8pEaK42YtbWoAoNY2+FFmnbu7li3ZrVRBsq8IsI4GablbmNl2DcjIh5hjHtZRwyd/TOBpzlc1jj8GSo0crCRfdxSH4M366jcMgNpw9ysqi5cB6/pEyGmrroOHYE5apEVDEqygqOo45/krA4FfOm5fhO2smrbCQrwINkux6LfxOS2c5mxnGSSTIcAuzNFzhRXktS7haE4z6f/TjAppRo3Cd6OXi6ich1a5ErvWmN9CHpdRfWZ6wkpEWOR0Q4Iwv8cZLJZCBBV5+ZzOQIhiqrOLrvOO9vjMJoMzHmH8GHmXGUffUDJoudPTGhDHwvqNaOsGuzhtxxB6pDJ5Hq6m6JSasro3+UYppy4ZfKWlZHzWeypZEX4sJQ+Dvz3aGrvLglmdCoZVjabuHubeeiyp0Qn0h+/bOHe11BOGVvy+Wx8ABqmmCwt4dVK1XcaDYi+fmhCAvk3Pl6wqKX8OjjoYj2Ksz9PXTe6GCOsw/9k33oeuso3FuIJGx6Pt19UOzYkUPFbw3szkonIz0Bhedc7ELQNzgO09MEG9rR6Vp4KtqfTy4aUaSmUNFWxfbQRPbk50jSg6fNLzgsNr39Fjd1nVSfOYVluB2DwUCIejHqICXJKxRMG4e5fEXHdRHH1o/eY9+XJeR//KYE8FA0Ybonyk6eY9HS5SQ8vRz96AATk1aMpmkadE2U78vDV6lk1+Fi6jtM3G2+RsaGl/D0dJ8pekDezv3CYrHh4R2IOkiJ3NUVs3kS47iNe2Yb+uFuJCS+yM+ZMSfSv+1RZ1efsNqmZmQuLjLUSx+ZdY/+N/4GLeemXClTxaIAAAAASUVORK5CYII=", "고추튀김": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAADxUlEQVR42u2UfUzUdRzHX9/zjifvvCOQAwNBlExgdCuZsjTHDGrZZlstgdYTrVUb6UpTw6ZOTUt7mFuxOTGo8AFLyeHMh8mcitF4kjPlPB8Znod4nHDHw/04uE9/WH+UWa7/2npvn78+7723z2fv9xv+K1Ciee+JaJuaLkqEVme7+ieu/m4Lp8MhRyte4eTZGHKSh2j62oQYs9hY9Ig8tWwbmQ/Z7i4umvcPk5ORJo0nDsvqwmQZvlIs14utomVPkPqMWOkpi5UrW+NldvpE6XCclpyMKeL3dMifNXS/i/9iPyM/7KmRQ8eO0tvtpnRpEirUj3GiIpAsGMPh4aZ+XA0a1aWC097M3ppqjtUdo7W5Re44f3BwkD7fANa4OA6uKSQr4zKaFkHPRScS1BCTjj1BAx9oBozmEJbwIClRZZzZIZimL2N8nBURQanbH9G1nz0n61evFWNUOG0HvifbFsLVJqxr6abaPYSrV1EfZuTl1wy8Wqqxv03PtXUhJh0IMCe5m8byErzdXWxYvVbOtNkFQLf92+2UrlqJ/tpuXl85k8T0EBlpo+CHy1cVx2/omV+cyMTH4hm9MI4XSgbwTgYWpdL0TRA06L3Vy8IliynfUn7bUv09nXKz+yZ1XzzJiwVmru7vJiJaCCQEiRwwE2tLQQ3202R3cfjcCPe79Tw9X9HvM9Nl11jc20deylyWLv8MpdNhjrYoNTLkxevxiKPibeIDjdSNT2TBAw5uXdUxeMlAmEUxIT+FSyfO44pMZEKkhVTTEME+L1EJJn7+sQdX2hDZj+5gYNSCxWJCt3njJtECAS6GT6fKDv3KQekmC4lpSUwtzicUdR9Vi65zqiGavBwL02bZiMytZKx1LCcrPfg8OpJiTPgGDNTW7CVlUqrSv7v8PZU3O1dqjxykZ56P5iOtFM67wOhwDOiepW+Xg5dmmfnO7WbA3omMjSbS1smopYCO1DJGTEWkT5rBklUfU3NgnwJu+7RyZxXlW8qJn7yGzPzPWbfPTN2OC6gwI3GF+RzefI1n3vLR0RLEmGVE+VvAkMCwvoiiNxdzvM3N+k8+ujP79cdPyE/1p3ijpISq0xXMCGXibPgUY/gUbDPD6HTW4nAtwN+6i+wnsrG3h3h+xZdUVXxFZlYWuY/PVX9ZKH6fX3bv3EVl+Tb2HznEGN0YbvV4CIuIIDQ8yLgYKyOhECOaRt6sOSxc8g7PFRRgNBnVPbXUqvdXCCjGW+NJSLACcN3dhedGFwKs2fCh+tfVd77dISjgt3RPnfag4n/8HX4FW268ZAZBkiQAAAAASUVORK5CYII=", "키위 카르파초": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEC0lEQVR42tWUfUyUBRzHP8/zoHB4vKgwOA4YEDoVqnOBIXVNl+CwmVvThblQq02trWxzlegfOTebL01Em5kvoeILS4RSQ0TFw5MldqLyKm/3Anp4yHneiXDc3fP0R8tyc622/un712/7bZ8/vtvnC/9xBMXrfOaj8VabcuJUDVGJaSCAJEiEhkVgaTIyL0dP9gyd8I+BKRl5Slh0MpNfnsvgPQeiJDHieYAoSoyP0WC+UYe9p4mBjjrhb4Fbivcr4VNzaWrvBkcvL406cJnu8N72jwixtvOoqpr9IRpOO4MJVoWjClWRnTDK2k+WPwGLfxxlhg5lJG4Wx46UUeg3sWlxNu8sfB3ply76bXdpnrYHaYWO7pBSfirIovyL+Xzjrudyi4sDVc3KU8DvDp9UTp5rwFBTzWfeLia+loMzyIUrTubdQj1J8iBXb5s5ajrCztnbGDcpAWeFEUGTiN8r09XroPxMrfIEuGnHQSRVJLNrjpO77lOKLqzD3VqGQzyIb3Ew3L/HvPDvyTCvwLjXBgEfhs9LMTkCbCvQM1pnZM2G4j87XLXDoGQ2nKFg90bky9dotZjpDGogVe0jUKHDo/dwXr7GB7qVRE3SMsbuRWxuwJIRSYI8iYuGW5QMjOOHjW8JYvHeo4q9305Isga57jytx2rZs+YAC8KeRxN4n+qxJxgKjeHB/QHcNg/KAw/uSDPuhTDkq0ew2/CPPGT48WO+KtqviF09Nnw+Gb82AaWzjdQ5KezsO8lp9QAd9dXkLc1HOzEW7Jmok9QYC89hv/0zvf1VDPfF449NRdZORpQk2jq6Ea7WG5QDV5xkevsoSI9AmZJOy8PNDDGN8cPXiLUux2UaRJMRiZSaxHZDIYtm5BPf2k/ZvpvEvxDJUVUsQrKOpdkRv3eYtWi9otEmUbQsk1iLGYIELscVU3nJQ756Lmrdq0xxBfDfsaPMepHNlStZu+hbguwKIHKp0cLGujaMpesFEeDtOWl4hjws+bqKeusA0qx56MP3sXXmDqQfxxBplRhMTKat6TqDx8tJSR/G6biErFJTUtvM1l9tzM9KfNqU0gvtit03gcO7iqhd9wahYdEIxgvsWn2KvNLV+PUlaF1vEmzVELhxnZCYKPY29XNO1LJkgZ78VxKEp0yJG/uQ3RtWMzN3Lksrein48hAXVfGsKllGi9lCS/l8wrrCOOPw8qEFcgyDNGqm09lQQ8SI9dkuu92PlKn6hUQnTydrTh53rb04u9rxDHsRBAHVGJEJqWlEaWK5deUi93pMNJw9RHxczBOXg/66FOHhauHOzbMAfFy4Relr7mbKzFwCPj+yLDPq89HTaCBlbCqNlZuEf7WHAN1mm+InCBAABRAQZC+Tn0sS+N/mN64szMdSMCZrAAAAAElFTkSuQmCC", "바다거북 수프": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAD4klEQVR42tWUb2jUdRzHX9/fnXf3+92c17Zzec502vw35tSuVOaGkKZSWIMQJZGKhMwpmYEYo6TA/oGygpKwNClBLFqyLVFXuU2HbmI6p0znbG5ruzk3/d3d7u53/u7TA+2BJeGDnvR++uHz+rwffN5v+I+lJDF430Fvd48IsOaFVQigABHhy33fIkAgZ6x6IGBjXZ0cr2sgOzCa8C2TJcuWYsXjpFI2Tpebw1WHGOXzEeq9TlHJfOaVlNwDdv79wtmzrZRtWkdNZSVeI4uLW4rQBETu7PmXfQgo1pS9wtdffEXBzFmSlj5S3eMwbIalo6ODnyq/Y8mcKUjfQTwT5+M49QG6GWekT3HzBsRiYCshNgzDExZgTF3KsdY+ni4tZbQ/m0y/X2kAEdOkubGeKdPycF18i4KV28gbW0Ug3eLSCfA+v42MMcK4qTB1ocasUgc5LXXY1eU8taiEpsYTDAwM3HF45vgRqT18iOWrVtC8bwfFE2tJN8J01VhkFM/FyC/iQiyE1VnFcE8WxYE21BBc/lnodypSCBM27qem4TzBOXNxjE7Tt27Y/Dond23l8dsH0G9HceZqqEQKl0P4gRATfePZfLSbo51C/pUhxtjQNgBZfngkF7qvxVi8rpyKj7ajCSApwQ5fZ1QmaICj18KdEhou/EFtt8nqXTX09seYYBhUXDUYMCC4+gnS/AE8bkUsYmIlEqAUmgKUU0dDIxmDSLtCTmt0nRO8XuE5byFbFxZjh1Nk2rBp8jCGV7CHY6QVPommgVIKlAIB7eGxAS63nmNc7iSsKGiT4HTIxpktzHt1J3OvfU/1gWreC+ZwqqWD6QuycAdXoD/7MXqWInILfP4xNDU2EcgJgCQGWRTMl99PHpSGVZoMvK8k/LmS8E5NkseK5Ea5W2LHVkvfO8hvK5F448tide6WZN9eie7KkfrlSNvRPfJM0WyRxOCdP+zt7pF9e3ezfsvbtG0aT7Y/jO4T9Ay4Xi2MeBQeWnuAlCRBCYkTn9B//BRD8ZHkb2um8scjzJ49k8nTpiknQLpvFNHhBG0tp8l86RuiXS1c3V+O1yMkUWTbQmj7cjw+uNYNVlTIe/FdDN902q50caapmcVLF/8zy7/+Uiter0FBYSEj3GlgxxDtbjr/aohUkmgkipWIU1/fSKi/n7VrX1P3zfKl8xdw6R50j47L5UIA205iWdZdGlhJi7AZwTRNWs+1kOHL+Pe22VlRIS6vwWPBIIbuRhBSqRSmGUEpRSgUIp5I0N7ejuHU2fDmRvVAffhG2XoZYXiYUTgDh8PB0OBNEpZFqC9E3Iyw47NPFf9L/Qme8Me7s83T+AAAAABJRU5ErkJggg=="}, "mat": {"호박": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADvklEQVR42o2Vz4scRRTHP1XV09M9P3Zmszuz2bCbZDEh4A+CJCFGAoqoEMglB0XwIB4ED148Cl71DxAvIoQcgqC5CEEjAS8GgzGgJBrJItGQ7GzcXzOzvTM9093V9TzMmk2iUd+hTu996tW3Xn1LAUjS5mHRu31FVi9/Rp5bJg++TG3ugHpYripuQ/0T0NmUtHNblr89ya0r52kECQlF+lHMzkPHmTz6Bn59p1Ke/9/AwcKPsvT9GVbnL1AbM2glrCwu09wWsNTJmJmdoBPB+J4jNJ48QXH2kFJa3w90wzWyaEkWvngf3Z/Hdz02uuu0VlIMQrdvKfma1AoomJppsmO6Tu+PRfSOo8wef5difVqpYGIEvHjybTG/f4VKOlgUvsrJHfRjy8+tIUEjpVIT4qEwt83D75cplapUQ4NyGVES4u05xv7XPlAewDdffkIaxxyYKVAONNZowqKiG+fsbfoMM4/+HYfKHNVyhfHJkHgjIYrgTjul1dlgcO00AB6AFUXqhZy7tsFjM0V2TngY47H/8e20VyL8gmZlPWeqUSJzipX1hLiXEaew0HGUKgFkegu40k2o1UoMM8dyFvLLT12mawUOJJpaKCiEahF6vSFpYrm1mrLYTtn9SJPadEBnaZWxSmELKE7wbIxzgheW8P2YRPt8fb3HWMGxt1GgEirWNnIGVrF9uk6UdNGeT9XkxNpSLwkA+q9x8Qx4RkHcQWlQxqM82aAzEL67mRA7gwQl+pnG1Jp4vg/9NjpdxxiF1up+oDGKgqfB5eAsZAM8SRBTIDdFTBDiV+ukwwS6tyBPAMitkKbu7hzrh745cei0hyEn9BytVgc/WUMrAbcFSK2glGKzwZGGAFnmsHakgwgIjBZxlH2FzYXAUxgzqnRulJdZRynU93eY54K1wsYAcgdRLORO4QSS1GHM5tParBMR2pFgc7C5MEyFhaXhVofdHhSNI8shs0KajnbPc0EEeMBf8k2IAMvtHBGIknsu5dCzx0ioUA4gHo70EQTnoBSau/oMk5xuD5J0JM16ZOkNHAkh+w6/MDoFgO0vs9S6KWc+fI9rl84T9YWpcYPWoLWmUTcEYpltBly9kbBjQnFjMade0YzvfY4Tb71DY2ZOeeWpv9vX/A8X5dynp2jNXyJqryFANYBmBcpBkd4gozxWY2zXYY4cf5U9B59R+kH7etBg02RI67fr8vmpj7h64SxOYKoEldCw76kXOfrSmzR3P6oKxfD/Ofa98evVy3L29MfUCsLzr7zOriee/tcv4E9IWNJ0gEz79QAAAABJRU5ErkJggg==", "밀": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAADoUlEQVR42qWUW2hcVRSGvz3nnDmZOXOf5thMmkxMxsZLSrBNKVVsXySCD+pDRKX1TcEGBQ1FsVKsRFBrwYBaxeqThQq+iD4ZhIrWGENai9qaEHNpSSczmZkzmVsyk7kcHxKnjYnTi+tps/ba/9r722stYRYMbsbSyXnz5Md99L56UvxXjFB9yDcqePyj90yPvUKdVEC1rfgmx34xJ8dG6H7shXVJagonkwlTski43B4xdGaQBi/4XRKNzToLRtQ0EmEuT/9WjTdNEyFWclhqCb/19ut8cuJ9AEJ6ibagh8ZmnVg4wUD/fhLzEZ556UT1tkZs1qziqMX45VeeNxORv2jylXE57dwZ8uJxqQyfi9DQrGMk0sQiBu33tBCbMwiGdvDoU4fEdRl77RUqGqhWhZYmF/lCmSvRHA63RiaVwyLAX+8hk8qxbUc3gaa7q2drovBqFTwaqOqqcL5EOJLD6dbIpnIIIdike8imcnRs76Z92wPihj4v2BZAtS6SjKdw2x0ocgZFLtC+xcrcZfA5JEKr68+Pv4iRrZjzOSeAsFyvzDxula5OHQCnW0NzOxk9H6WrU8dqlRg9HwVgIlzCqXfw2qE3a6MY++Mns5DPocgSHpeNZHYZWRE4NZnsYhGHZkVRJIqmQLVZkSWTYmGJ+Vi0tvAXnx0hGY8gWSxoqo2JcBbJUmGz9yo91abiq/fgq/cQ8AmSkYscO9Zfu9xOffqsGdRlHDYFbbXVpiJZFnLLtDVY+X5olsJykUKhyJ9zCgA7u3Zz8ODhjcttcmzU/P3X05y7kKTJvxlVVqqi0ViGbDZPOl5mMlKiUoFyWaL3QB8Am/z1G7f0ghE1Z6YuMjI0yJwhk8mW0epMVGuZufgiyeQS2Uye3GKe9KKy2saCvXsfrD0rBvr3Y+QsRNMKdzUUOfXtDD6vjV2dfqYmZgkvSKSWLIDCrq3KKorSxhPuw4HD5tCZQUJ6iUce2oqRKRNLlfnquyvrgnsP9FVv98STD5vX7h195wOCwVZRHZvOugq6G9rb/MTTZWBlgv1jgUAT99+3B4CWltaq//Geff+qd+9aFG674DY3tIf8jM8u43VY0D1XCTUGttDTs28dw418a4Q77t3D9NiPjM8uM35h5potZc3zbtbk2+/YLly+oHl6eJp8XsZtq+B3VPi/Jgth4ennjorWn38wR0eHSccvkUleYmfXbuw27ZaF13Xe2bMj5tfffMkbR94Vtyyq+vgbWLdkdUc2j5QAAAAASUVORK5CYII=", "사탕수수": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAADAElEQVR42pWUXWibZRTHf2/7Lt9tki5dpm1WutGxraEKw4GOMYdWRRFEUK9URBDaeaF34oVU0IuB3+IHeCWb3zivRETYQEFlq7pitZ2xky3JkjRJ8+b9TN6vx4tgaDHV7sBz8XDO8+Oc55zzl0R7ja1YCw3HbwnP9TEVh2gkRjyWkNbH9LFF+8E/Kd5vzfDyxUeYnjnMO5++8a8YebPHb+Vmxc8XLvDjx0Xun9tH4rowni04PbfMb59flnq96Qk7u3pSVKoVnLbP4EiIgVSQWsFCq9nsvzUFQMFcEjl9noFUiElpWgpLid5lnqmcolzpwOIjYQaHQ9QLFld+b3ZheWuZM5VTzPufYaKITTMrLGpUSxaxoQA33Z0GID4UQC/LnJ5bhrk7RTQZYGR/nOJSk3vfvYODu44KqVc380pOfLDyAkagzPB4jIvf1igt65iKy8SRBBM3p2gULVZXDH75ssTzj77KgbGp3pnVjBLRVD+e2IZet1ldMbEtHznQhwDyvzZRrrao/mVwcNdRDoxNMZLOSD0ze+yjW0R2egdtwyP3fZ3cdwrpvREi22WqV1vkzzW6ses7uwH2zR+fiA9/er1712sOpSWDYzMZAAzF4evXVkimoySuDzK8J8xodoDjE2+zM7RHklVLEe+dfaVTXjsPgFJvYysekiSR3hvpgNZstDWHofEIO0YjWJrDpfMNyn/qmE+4EALZapt8Nf8FcrCfcLSfWHwb2pqNpwoiCZnkaBDX9tHqDmq1TXBQJhjrwzfDOFYM1wLhdCZM9myf0oJK5lASy/CwDI/Sgsrk7cNsz0RIjYUpLGpcOt+gdtkEoLSg8vA9j/PMs89t2ITun9114kahlVsoVywyh5KkdobwXJ9GzSZ/rsGLT77EfccekP5rf7uj0Sxa2LrbdZi6i224NIsWxx96in3jk/8rBl2YWmxtcJi6i9mwUYstZh98WtqKsvStn5d/DkB5UeWG5OFNFWLLqlFeVDkx+ybZ3VNci/VUjSPZ28ju7qzItcD+BlZ2aRQpqGGYAAAAAElFTkSuQmCC", "양파": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAADHUlEQVR42s2Vy2ucVRiHn/PNN5czl0wmiclMJamNINJNCyoo4kJBF26EIG7ERYVKF91L60JmURX/gRZdqCutSFZaFxURKoiJFRtrTadXo5m2mUtnvvnul3NctB0rU0OiG1944cDL7+G8v/Oec4QOuvzXOHt5We/e9YgwhAGAuR2x69uEka8BxktTIog8PN/Rn3xzlNrKrF546lVqkzvFtqBffn9c/9j4FoAj+z/g9PlT+ovvPkZWJXGpRaN1mtrkTsRW23/j/X16vJYmkzfYuBQgq3JYq1TAsiB0FK89cxhjy61bAXGkEIbALJpEdoShEnI58DwY3PAoqAp9p7t1qGeFJFECQpAupontGEMppATf/wv68Nze7XnqOBC3Eq7/3Lm9+wyDdhaAw/vfpTY5J4B/9nTpo7oGCMKYvu3yee83UhmDVNogW9DIqTGkNJB5AYA0axCliAbR6Eh5vZZ22n8Q9JqYpiCJYpKBx45Uml4U48Ux6ZxByjBIQoUbKwAstU4SamInHoW2L/3Eha+PMzGdp1A0UUozXslT2nBZ8l2uxiFOR5GTIa4V4FkhAOXpPGYmtfnwz8zNUhkrkiiFZbuMla8z4xbohQknIgdZlVQekEgJzV89Di7Uh56OQIMw5qblUCpIBv0uQRBgOyEZEwI/xrFDbM/D8yJk0cQvmozX0pw49Snz1d366cefFyMjFSUJrh9iCPB9F9d1CFyXOFKEQULgxSRWiFQlcqpMVlUws4KVxjKrV87eu/3IcwBonGswUZ0hX8phpnpcvdC/JYg1s9dsXj+yKO5oDrz5or6bYQI43ZZefPsAzc5gWLh/wyWOrqGUwu7fOozLzQ6dvjPi/7H6Z+Jv0N9/WdI3m1fY89xLzLsha+dXWFs9w3qrT9t20FoT+sntVyokmy/w2LMLm14Sc/3cDzQvrrBw6JgAyJ5c1GurZ2i2+/cUlKcmePKFV8SmVB10h/nOy4/qrz58S99Z37i4rO+ubzVNgMCx9Mn36uyrHyVfLANwXzmPaRj/6icwATKyKHY8tFdPzz44bGt+zxNkZIH/TfwJLxSw6+SJ5DcAAAAASUVORK5CYII=", "상추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADeUlEQVR42p2UX2hTZxjGf6dJ2rRJ29g2aWNOTlBpbUi3mAtNtzIs25juD+uFFxOhN94PxrAb7GoXDgYOBl64m+HWwW422BzCGGKlm0ybKskmxlpbxZw0bdKTxpw0ST35d3YRDNTaTnzuvuf7vh/vy/vwCrqWYSfNp+7oP4V/fOZdoViiWKxwdvxr4Yln3AmWzq/q86k5Ls1dbHg6UKlWMRkM5PIamWyRiXc+1p02p2A0GBF2qnB88pieXH+I5OhpeKVKhYVEEp9HbHi/Tf/L9GdTDIk+oWk72PAZn141ZPB73AQliaAkoW1oPEwq+DwiQUlCstm2/NvScjh+Qw/HZwlIbgadIgiwpKoo2RztZjMvu110d7SzpKoksyqrag6A769OMjIwojdtBc7y7d/nCHjcHJL2IdnsJFSViBzHam7B7xYROztJqCorag6lAfyBX29eYPuWJR/315a5GZsnGlvi5GuvctR7gMDufgCisSUAfB6RsVE/HVYzwGbg+OQx/fbKn4wF/OzpGkLO5inpNcYCft73jSEIZsJLi1wI/8Nep4NBZy9DfX2bCtkEXFi9C3qZgOgllU+zrj3GbGolIHrJa3liGYWF1STlWo3dnZ10tbVhaW7eHgjgtkm80f8mVxanyGvr2C2OxnnqbpjQg3qMBux2ui2W/59ypphkLhUiJMucODCCoQm+u3GekCzT0trCkEck4HIxLPmYkRcIyYubcijoWgZ145F+dvorcqXbtDWbaW+1oFU22NvtoFgqcy+dpKOlhQH7fhzWHipVhfNXrqEUciiFHJ++9TlHXzqCzWKrB3ujtMGluYv09zowmZq4v5bEbrWyVsihFFS0So09XX0MOjzst3uoVpq4k8iiZGtQtnJ8+APBZrEJjZZNRgMDohMAh9WKw2qtLwZFoa99FycPjuLtDXL1wV/8Hr3MmV+mSJ9LCs+Km/Hp7D3RjBzlRGAErVJmRo7y+ukv60Prdm8LAzBGEtd0+dE93vOO0mNxUSzlKJbXicTiJNbyVGtV1oo5Pnn3FACdbR07rjvjreVZoqnrfPH2R/UpF1bqQDkOxBsPv5k4JfAcMgZcrxBZnmYuFcLbGySyHOPnW38wMxF9LsDTEqqP05y+/KFeKKUwGy0M9QUZ9hzBbdv3YkBdy1CplZmVp/XI8nUOug9zyH34hWAA/wHAsnsuPUTVGAAAAABJRU5ErkJggg==", "무": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAC6klEQVR42p2UzWtcVRjGf++9d+bOdWw+xkzamCGBEIytoGIXyULHUopSKC4UleLGTVYFdacbbaEiwYWIH/0PXFkQKTQlXRREmglKY6OkNU1amoxNQ9LcZNI79965H28XacViUjM+u3M474/nPc85r2i4SjNaD9f01G9fAvBS6QAvdh+QC/PntVw6KKZhYtGk/Njn3I0zFHLC41mT/rYB/fyXj/hi9Dk99dZnGPxPffLyYySc5e0zRzj8tLBwZYHK73805/DO2Pf6158/Q3Fz3d8Bb2SFkU87OT/yDc/09ol54uMPdwSLqtOqjbuYeQfHdvhpYYmZ1YTbfsKyB5FncdcLT8hOQ/HGT6tZKGDYNtHiIntHv6WtGNJeDAG4eaHAwafK/91y4t7S4OpFpDyMWZ/D9JcQy+LK4WN8NTHJ1z9OPnT+kcBwpqKJlYMXXsfemCLOdpLs2ktWp7F27+a1tg72Oe30Hz8JQIuT3x6YuLc2Ybk8pi1ow0Y0BW2gaUpjeYVia4Fd+wfp6e2TB3XbPpvg6kW0+1mMJ/uxvRka+QEk9cl4c6Sehzs+gd3VTc+x9+Sfdf8KJbp9TRs3LiPlYeyNKdSwaeQHcNYqJF6dyHVZHh2j54MR2crIQ8Bw7ldN7RZSp51si0lq5hFNkdRH3Jt412aJ3BpO3/Pk9+3fEni/ZUXDOvH6CioGRmcvRlxDDQfFxPSXiFyXyK2R1KNtYX+nrKFP/dJZlfIwVlAlU5vEbxvC3pgCf53E81geHeOJV958JAxAgukxjddXkMGjOGsVolyJOFfCWasQ1zYI5hdwxye2vbMtHaIJVlAlypU2N4MqqR9Qn50jjaB16NCO/7shIojGZIIqca6EikkmqJIGAd7sdWKvQevQIdkp0Eokj3vpMpk9e3CokAYhse+zePoHut55n0yxS5qZSKLhKuHivN459x1imqApmirFI+9itXeIWJmm5qQFYHf1SMvgq+pfnwZVgKadPdA9m61K4WfAvgoAAAAASUVORK5CYII=", "옥수수": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADvElEQVR42p2UTUzbdRjHP7/23zegLZSWFkpJy+uA6jDg2yK4jJmwg5nRxMTDTDi4Jbpkt2lMPHhQF+PBXUzERHbi4Ex0MYgucxCyA2STF0fDQnkLb0IphUILff95qIAV8OD3+OR5vr/v83y/+QkZD/F/MDNwVQIIocLsOkdx5WsCQDlpYDm8KgH0Gh3FeUUCIBULkU5GJcD6VA8qRYOi1bG1+CMafZk0OpqFOElh5Y02CfBKTStfv/GJ2Fe1PtVz0GOr8VLedAaA+1/e4VTHx6j+TdT96LasvNEmL7/6LMUmA6H5Xoa6LHKoyyIN5mWeuvg2Vm8tADuhJRYnBw5ml8b6cle++aBbLuzO0FxbdlDTGwtxNNgASEQjBGcnMVndKA1GwmthVsY2iSyNEtvZo8AucxXefNDNQmSa5jrnIaGpkNLGZkobm0lEd9iYmcRsc1Pa2IxMF7EytsWTe2PEI3v8pyldPz3kU9M07u0Yo7cHsXpriYZXSSVjLE4O4Ko/S1lTEQXlHh7dmqPjo98odHmFAhCIBGXnd9d5va0Ri6UQm90GPMTzQjtlyQ2Wx4ewe1qwlSfZ24ow3DOI/9c7WKp0FFfrc4SoAJLpFJOBaazmPIz5erQ6HcmICin2OyCVjKHoDeiNhYhMDKGJEY/ssbkQxdl0AY3BdEh4HHZXtISWZtjeWABgY2mCeHQLlQZKqtNUn7NnA34/QOu7t0S+teJosJ2eyhxSu6eFamcePA8/vN8NzKFoJeVPQ3Biit2AClDnzCgAmbRgd1VzROX2+jw7BhNGSzlWdwpdkRmVRktwZoPvbQ4SGkHCJvi99zMJ4LXX/K0wA8nt7EuZTIZMOp0lDKwR1u6hwkyBVZIu0ZNQ57M4ssOIww4FQAGMPO6jpMCKRq0cjU0kHGZnaxMA/71V9sQ88AfuFvhmVs1gwgAVVVw+fzonYt1vfk59SbUQ7331oex93M+Vd07h9FQyNuVj3O9jtE+XvUl+mnxnEoCXmzzUuawH9+4fnmBg2MfsB4Mi54b7GJvyMe0P8qdfzZkXSwDQ5SuYSg0AuB1FGE15APQPT+BQO7n20nO5piiqQ5fG/T4C82pWpxUuXczGQp+XR7HdccSwgeG7dLY0cO18p/hnXch4iMXgmmy6folnLsRxWUqoc1QcidDy3Cw//7KIz7eVzeW3d8Vx+RUyHiKVTvNkZV52fHEFjaKgU7RotdqcxkQiwdX2tzhbn13R66o6llABUNRqvK4q0V7bKjMZeeK3f9pVfyLRPv4CvJxhDuI52sMAAAAASUVORK5CYII=", "애호박": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADC0lEQVR42p2UP2wbZRjGf5/P5/Nnx3/q1KZp0oSUpEkEQlU7VAhVTaESokuKYAidKpCYUDfGSiB2xMCEhMTGAAKxREi0Q4UqNQtxh5CWEsBtHf8rZ5/tO9/Z5/sYTEODE6Hk3T69en969L7P8wnlmRy0bq79qH5au8Gp2fNcPPuaEEaG8EFhxcqWulfYYGX1W7785nsWplcUIA4MPHflAtkpjYnn49TqDq7vAhDaL+hRqagmz86q0SM94sn+UH9fCtfurqr8xhoAna5AaweESl2UJ0CJ/QN/vrvK9ds/DIA9AVZAv9OHrg5qnwrf+fCSyh5NM/fiMaSMcP3GOh7QAKCHCtT/A7+7/YV6VH7I47LFqxdep9kp0e07zE6dIpVL0DRtmnUbgFjMGAb+unVHPf1uehZe4OKHesRH4gRaGt+Pkk4f4pmxNDKqI2UEp+WihXbZ4de3Pt+hcG76NIdHJ+AENB2TETlKJDxQImMRNC1EPCHZXC/uvLJlm+qzlWucXDiHocWQegqAllfDcqqUzfvMjJ8ZbMv3KFTyzIyfoVz7k7JX2Gmb/B+3VKH2G5Njc8T0FEY4hjQSAPRVF6UgSA/8ZtlVvK5NLn2cSn2TSrVCtVTn3UtXyaSyA2M/fPw794p3SCezRLQYkbDE0KMYepSIJpF6gmQ8S8/3cFwL220gjSRWu0azadFqOLx88hURlyNiOylKBbRdCwAhxK4XL1Ty2K5JP+hSqORx2h69rj+clGqxTuF+hcmJeR6Y66RklpTMDe0QIJc+TlRP8MvmKpvrRZYWl1laXN6hIAQgEBi6BMDt2VidKq7fot4u0+05ZBLjANhunYZdBmBpcZn5Z18YVqiFNIQYAL1eB8938HyHpMjQsEvomsHY6AnMVhHbrRP8k4j/KntSQnkmfzWq6oNP3+PNty5vN/IbN5HxgdcA2s3B95SKZ3j/4se7w4zMANjv99mqPVCffPXRdrPj2YRC/84FgeKN829zeuElDifH9gSGATRN49iRafHc0XmllNoz21O5mT1hT+pvjZRP8vwgekgAAAAASUVORK5CYII=", "오이": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACkklEQVR42sWUsU8TcRTHP7+7a0u1KaCQGjAECA5IgoMkJYbFGBxMZDEObiYa+QcIcdFBo4mr0c0omzrgoIkDJLho0sHUKAYTCVpFBRqkLS0t17v7PYdD2kpQcfFNv/fe7z6/977v5ZTYK/yLfV1OS7Ufa9yrLNNE/Suw4+zJGuDTKzfpbutQOwZ+XU7LwMg5on3RzZhqd8lPlhjsimPtBDaZTEhi7i2hgwFo0LCuYF0hWQM8hQgYOwFOJBPce/aYuoMBVIOGuo2uswZ4/tHaiWbhviD1Q2HCbYrih4qExXkb7fj+HzVMvHsjV+/fIX10AddWiKtQQdApEzfn4eQ0zqLNreFRDrUf2L7CyWRCAF5/m+W9+5nGSAjlgS6DZBVuViMOGJYCV+iMtbK/Oaa2BV64ec3XpMVk95EQ5aWNhAbSJuXvNoGoSagpgJ0qVSZe3XL1bkX7otDiYjVAaJ+vmSwb6KxifaHsswsues3j49gT9fM7CyCTX5XrD+8S7gtuqVTbYKd9mPtd4+X9N72cw2BvnOO98Zr7Via/KnNLXxhPTlE/FEa035Z8EfAU2ha0DTqr0GuCtjXiCa2RJvq7ejg1cExVA9XI7csynpwieiLMrk6FkxGcjJ+UbyaU1eZqBPdYGJaiMF2oabOmQgBckJRFEXczISmL0mIZcSr7VvpYojXSxPTYfbXdMGumXP6kK07OxQobaEvwShpdcBnsjdPf1fPbvbUsw9x0nM/VPxCPulgAFdgArnkc741v0WwLcPBwPw+eT1Cct/1AxCTYaFGctynMrIHrP7KdZr+aEnuFl7MzcvrGRT9ggDIV2hFuDY/SGWsFoLut4++BAI9eTMnkqwRaV9q+dOY8+5tjiv9pPwC7yDHH8BocswAAAABJRU5ErkJggg==", "양배추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEDUlEQVR42n2VW2xUVRSGv31m5sycTjs3eloYmNaGttFKvUQkSEJ4wMSGhCABH8AHiRoSJVHUB2M0wfgAxkD6YDQKUdD4IDEmoiIQjSSAKNi0KBMqlFp7n3Y6nU7ncmbObfvQSOVS1uPeWX/W+rP/bwtZmWah+vTyR3KilAJgakwDIFoV4q0nXhAL9XhvPShZBWbNvAS4kPqJ/uwApbKA9CIMxyJWHWNHdrMEqAkECWs14q6CPwx8K9/vPgDA+mZQXR/HkhpDb67gx4m/+C01yJrObQA8t3orezbsuqlf/H/ldV8+Itc1etl8r5+zYyUe1gMkBxX2feehqW2WV9e8x+rEao5eWcfXlyW5jMr0RIChd07fmFIBKFgFjiQ/lh3LfSTCgsG8RUONj99HbXpSzh29uq8Oli5yiOgVOk8fkenCtJwXNPPycPIgHc0qerVgKG/RWOOja8yhe9y+o2BbvSBR5xDVK3Se/ox0YXp+wv/q7FgJgLXxKnafKnLxkkaTX+PYKw5b2gWD+dc5fn07zz/Uv+DL8DQ8GZZf9H7Ag0tneCyuUXEk/TMmf6Qk+axKwXbpK5XZ2BLAdCQuHlbqS7mYOkFrzMv6e1R6cgY/J5P8kx5/W5kopRjJD7A86qVsu0wVXfoyLsVZL6rm4NdsXOFStl00ryCqOrhWkkUBD0jBtCGxTYXrQ6MMjU/OrawqgraYn96sSc+Eza9DMDlSRShm0tRgsqZR0Js1CfoUlocllfJ52mJ+RnLwyaUKkyNVVEb9uFkv3qkxjb6rQc62FFkbr8I1Lf4cN+/oz7UZk8G8hV3/N7tPFcmm/cykQ9h9GqVUGSNuzk3oUwStEZWr2QrRoGT7CvWGSLVPoTWi0jUs6RqWdI+6XM1WSI8GiIegY5Vxc/SiVSGWhHQwJsnZFhHVw7JqD9ISOKaCtMEnFNJFMCoCnwfuX+ygWAHCqk0i6uLaLotra9GjkbmkjKQn5aqXdnD8wwInr5uc7LfoO1aPp6FMsNakPmGwpV1w4kKA4UkPOzcWATh3Jsi5M0EKwwa/HD5Ee0uzuCnLmzo9RHSFqA6FYQPN9ONmfJTyPvZfgdq4QaLFAAT7j9bgZm5DwZyHoWCQ17Y+jZvxYkz5yKb9BJrAMW3s0nz04iFIhATnkypuxos9A2bO4o1nn6E+FrsdDvFtG6SI2Hh0C4D8RVACEHxg7r5jlUGizuHQ99XYfRpm3sacsZg9Nw8HcStgD534Ru75/OAcG1NlhFeg1fpp2TRBqjtEbsBPabwCwItPbeXdl3eJBfEFMD2bk+PZDAA7D+zj2sAgVsHGH7axSh7qwjpf7d0LQG0kzBJdvztgY6GwiIXCADy+8lHZvGQZ5uw8cfRohPaW5gW/gH8B8BjM5fIq3WIAAAAASUVORK5CYII=", "레몬": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACI0lEQVR42p2Tv28ScRjGP8cBd7UES6CNpvgrxmIaHZxMsIndYHJgMGmXJib9G/ofGDdWBx2cSBOnbqaLDsYwlKVNY2oKgXwJ1kKvcKX07r5wDsRTCtS0z/Z9v2+e93mevK/iWkdcFtIUrpQuXQmT07cUAD9XwP56klrFofzDZiXXAEC5SNFJ+ZNb3VwdqieW13COt7Eb3/j4WvDizZfRihqFrAvQs0qEZ3UA1Mm7+LSo13N23OZEdLz3SKJ6IQuAHgkQmwsBEJx+SCCc8HosU9Kqno0mahSybr2QJf40gh7PoGqxgQE9x6RTySHyBqJoI0oOK7nGcNg+LdxXEs/gm3oF/pn+h/kOgK7T42C7NTJP/7/Bdtt76JEAaigJ/tugTnmNXatOr3OAqvlwTrvjiaqbq4RuaP1MJl8O705zB2nuEZsLIfLGeKLz6OymUZQ2+s0UANrMIr5rTyhuvL3YGoA6ESc4/RhONwhMPcC1f2L9+ow2s4jT+o5tlPsLuWsRTaRZSKX/5jsQdjBCIJyg1/6KOhFDCVxHmns4J01so4xl7ANwWJPosXnuP19SRiryBbW+rUoOPZ7x6uPsDFiTpnD315Mklte8osgbkH8/eF+7Foc1CeDtziCRdBFFm3tHW1gtB8uUiKI9NDGaSDP7bH68oq4EUXJwjC3atTOalQ6i5Aw1LqTSA5mch3f9H5ai7p/iKOn/g0dklHc8osidR5cm+g1obufWnCf8bAAAAABJRU5ErkJggg==", "고추": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACe0lEQVR42q2US0hUcRTGf/fOnYfNMKNOI42vEntjT9soRhCYkIuilYs2unARoYsgooVFSAgWobZqUVsjgqCNq4bMohgJJCbLSM0ZNV/jjPO6d+7MvS2MARsZR+lbnnM4/+873zl/gb/QlSD54sFonx5a0Fhb0OhvuyEACOZiACR2gOHZt4RnTIT9xqzcjhrW76+iof4CDa4m4d+cyH/GthhGlKj+1PuCqdQKNdYEuLJrtsVwTY7SN/KMqeUgq/HEpjVCPi4/3FOtf7laSvCAlXN3fnD/YjVmZwqLM8XkreH8Xfa//6h7uro5bItw8nUAgygRs0WwVSoc+xqlZihGc0mb/vjy3Qw5KVez3553SGM+yvaZsUcFjLLGXFrgzEKYikUF15LKTOwXSU3d2hRPVzfSmI86WcNdsT79VCJNaiTF9TcB5mUz81hwu61IkpifKRaXCXejMyu+b9ZKYcQEwK5r3xADcm6GQ5039fKpAE5Ry8TiszLxYJLlQoXpRAGToshPTaCjvwdXeWnuhr7nL2lMa5QUGzNSlWWV+IrCSkmaCVUkZHeAw8H5litCXntYdMpO4VEbAEsjIeTFJElNxBex49UN1La38mTUI+S8lMHeAX2wd4DOojBxr8K8agBguizGdLyAuaQJr2bg1eKEsOXpDfYO6P4Pn6gU1ucWsaZQVZ1V1URINhNIS6zZHbS0t+a8psxLlxy79UpBY6+gc9oRBiCkSkzGrQB81wSorNhU5qaXclZM4zbLuC0KAOMRG/60gXF9XXZHf0+WATklf9ZEjHIBUtIMgJIWOdRQx6N7twE2rEZeDY83N6Fp2obkwdoTVNUcEbbzI/0B9/r7klhR92gAAAAASUVORK5CYII=", "토마토": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAChUlEQVR42o2UPUxTURiGn9ve/l4KtIK2wYCGEAZIHGTQ1ISB2EQTRwZZZDbO7g6ERR1BBwKGxAESNxkMxhQSJdGEQMIgMWLSIjUtNxb7d3/OPQ7YQqUl/bYv58173nOe7xxFGjqNKnuUk26Xm0hbWAH4XcxLwza41HFRaaRXfBFcNKmH84958uZprX+2MsODF484r+rMFtfnZGIqLqv9x901ElNxmZiKy3dbb2u6xFRcLq7Pyf/N1EY7zK7OS8fzB61NpVCyAPBrKt6gwezqvGwp2SkzhJpHC6kUTBcF00VAU/EEK8yuzrd2zP7PgtszRq33q5JoSBANCQKek0BdzwsEP5lnIVRpvkpMyFg5R6yURQ+7yFsWh6bCXtELQG/QIuIRGIbDbsqP3RXBjoSZTi4pVZqqXa7wY21Der5/RQtKwhrEAhq6NDk0HHwlAUCkYqEpNgBFj83Pwyy5TJYvKx/k0K0RAEXJf9uRL2/c436vqMXtGRsCoJw9Qt9OHc9dwaBgnmjSppe06WOzYjGdXOLK9ZtK7c729BIi2knP2BDyzl1kKESgu71m3N3m43KHH4CNQoi06WsOoEvzEvS6j5vtLahUmlLr95UJuy2azlnIp6JKiV02Uff3AXCEg2PaWMIBQDjHRNvdgqLjBnHO0BZTOsWUXjuaoRfQt1Ok8/UpN0ttDROrp++sM+AhHPCw/36nTnQ1EjwDoKGZQHJgC9KmF1ORgNVQaAoHW0LG8p5jJiFjO//oGHil2VQspNKQ4pkXMHHhmoyqLmKqm1bqwBZkbIfXh1snL6C6OJ1cIrmwTHJhuSWz0clxRifHGwPoGx5UBuIjMvcr15LZQHyEvuHBul/3L4qXHYLCKFTWAAAAAElFTkSuQmCC", "고구마": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAB/klEQVR42uWSvWsTcRjHP7lcbDSx1hBLolJKW2gigQwpghahg6iTQkBwUnBxExQF/wEnXwY3EaWDgy8ggqCV0sWiQ6Q4iFBiind5MU0MuebuEnNJ7n4OpYGYiJ31GZ+X7/P9fp8H/tlwCau6rcZy+rPQS4W+/NSxUy4AebsbV54/4svrp335a++//51RZnlBvLxxEYDjZ08zHT+EkUujKwrFUpP1koVaXOPC/OJgRm9uXhEAHtvk6FwCgBGfRL2Uo7yaweuV2SnbBLwWyzWblvObNMvUhWXoKO9eIckyoXCQ6OEIHq8Xx7ZpahUalSqeUADZ1cG3w6baFNiO6AVaefaADw/vcP5SEv+BSYz1Et+WFpmYO4KlabRNk8DBUSpK8c9Xuz27X8QTUeIzUfZMxABo13UapSy6ogDQtGw+fvpBNCRIqTVSqs7jTHnzag1dFwvz94lMhvFJDpqSY2jvKC3DwP7ZoF2voeZNdg8JZJcg6N8EGY7MkDyT6DKSGnqNF/duEZkK45ccNCWPpZUxsmuYBRVrY4Ns3qRaMWmZdfb5IaXqDE8nSF6+7toC6npUUYrsGvETHA93pViNJkZZYymd6/FjS06PR516mcLXVXH33Ekkt4TkdneLjuPgdGyuPnnbMzQWjfUByW5ZZiwac43PnhDCcQY+5qDB/yh+AfB06RLNtmpNAAAAAElFTkSuQmCC", "키위": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAADV0lEQVR42pWUXWhbdRjGfyc5+Thp0nycdU0XOW02s+LokG3ejG4FJ5RRvJjeKAwnMhHnjYLojXjjpoKwC5EhDjY2ZYqgvdGbsUmRzkod7qPDTSw1a5YladJ8n+PJyc6HF2F12TLF5/J5eZ//877/930Fx6hwL1qq6uhqk6YkdPFKON5N9IB4PzE7fYZzp4/zyZS/i9ff/In/Jfb2Uzuc+ZTIL1N+JhUf2+Jxgl4vANLRcQdgOBzn95e/7elScIwKLVV1ZqfPcOnCd1xNGCwkDJ5UZLJNC8N2uhJ87gBPDE3yzs6DDwi6AHS1ybnTx5E3bSAxFGZTWGQ4HOZKqclMpsJMpsIeRWaPIrNFFjkyd7Jnma7/6sPkiMLyoYMATP9R4OS1LId3pZCOjjvv/3yiy7Zw9rMPnOvzPyLG3JhtnXRC52aixW5F4djlZdYHJF55PMn4I6PUDZNbTZW3ZmZ4NhUn0xTJNNzMHzglALhqxQLF5TRurwuX242kuYjkOy8lwwECIszdXiEmBUlGImyORYn4PAwFfWh3aiyUFrvLdGwbvVYnEI0wWJZ4dL5T/dTGATZGAnx5I7+WEPS42b9lQ++eDY6NkJzY+kBgNpNBbbd5TA5yeFeK4U9P8Mb57zn751UObJ3g3QsdR3f7t1BadMRGdpXVxRyR4XXUbhVxbAtvyMvIJYP8tjqBmJ9EKMQzqUFW9TZf3cgylzN6O9NrKmqxhleS0KsqlmnikTysywi0VluojRYt02T7YD+247BYVTl/M03EJyIK0DLNh6/TvRi7LlEt21y0cuxWFPYmB9ibHFiLL9frXMzlujegWsg7H+5/ms2TO2iuVFFXqvSt70Ov6AguAX/Ej1bUSG+3KSv/PLZUN1mqWzz3RYP3vv6m25mhqljt9kOdRvICXtWm/ZeBLyjhlC38FYN9rx4iLMv3i2mY/yIWzQuEs6CVDELxAP6iRaxksO/z14S1OYvGh4SPfvhVAKgWNZZ+W0EratimTauhU1jIds5QXaNRqFMst2kWqky98BKnrlwTunp2F6XbacdsW9xpWxx58XkAPG7o87uoaTaOZdMvD/D6x8cQRYFQVCYUk4WevzmQSK4FxnZOOAAeUSAguak3OyPQH4uhjI72vGd/AxiKZiOa4Zu5AAAAAElFTkSuQmCC"}};
+const T=86;
+const D=[
+['감자 수프',1,1,30,null,[['감자',8],['당근',4]],[],[],[]],
+['호박죽',1,1,30,null,[['호박',2],['밀',4],['사탕수수',2]],[],[],[]],
+['송어 버터구이',1,1,T,'송어',[['감자',16]],[['양파',1],['상추',1]],['봄'],['상추']],
+['무조림',1,1,T,'고등어',[['당근',16]],[['무',1],['양파',1]],['겨울'],['양파']],
+['우렁 쌈밥',1,1,T,'우렁이',[['밀',8]],[['상추',1],['양파',1]],['봄'],['상추']],
+['옥수수전',1,10,T,'강꼬치고기',[['밀',8]],[['옥수수',4],['상추',4]],['여름'],['옥수수']],
+['피라니아 튀김',1,10,T,'피라니아',[['감자',16]],[['옥수수',4],['무',4]],['가을'],['무']],
+['비트 샐러드',1,10,T,'깃대돔',[['비트',8]],[['상추',4],['옥수수',4]],['여름'],['옥수수']],
+['해마 맑은국',1,10,T,'해마',[['당근',16]],[['무',4],['양파',4]],['겨울'],['양파']],
+['애호박볶음',2,10,T,'오징어',[['당근',16]],[['애호박',4],['옥수수',4]],['여름','가을'],['애호박','옥수수']],
+['오이냉국',2,10,T,'날치',[['사탕수수',8]],[['오이',4],['상추',4]],['봄','여름'],['오이','상추']],
+['양배추찜',2,10,T,'거북복',[['감자',16]],[['양배추',4],['무',4]],['가을','겨울'],['양배추','무']],
+['레몬구이',2,10,T,'개복치',[['감자',16]],[['레몬',4],['양파',4]],['봄','겨울'],['레몬','양파']],
+['호박전',2,10,T,'배스',[['호박',4]],[['애호박',4],['옥수수',4]],['여름','가을'],['애호박','옥수수']],
+['오이 샐러드',2,10,T,'연어',[['비트',8]],[['오이',4],['양파',4]],['봄'],['오이']],
+['양배추전골',2,10,T,'비단잉어',[['당근',16]],[['양배추',4],['양파',4]],['겨울'],['양파']],
+['레몬 세비체',2,10,T,'쏠배감펭',[['달콤한 열매',8]],[['레몬',4],['상추',4]],['봄'],['상추']],
+['레몬에이드',2,10,30,null,[['사탕수수',8]],[['레몬',4]],['봄','겨울'],['레몬']],
+['쑤기미 매운탕',3,20,T,'쑤기미',[['감자',16]],[['고추',4],['무',4]],['가을'],['무']],
+['토마토 파스타',3,20,T,'왕게',[['밀',8]],[['토마토',4],['양파',4]],['봄'],['토마토']],
+['고구마 조림',3,20,T,'해삼',[['당근',16]],[['고구마',4],['양배추',4]],['가을','겨울'],['고구마','양배추']],
+['키위 소스 구이',3,20,T,'철갑상어',[['달콤한 열매',8]],[['키위',4],['레몬',4]],['봄','겨울'],['키위','레몬']],
+['청새치 스테이크',3,20,T,'청새치',[['감자',16]],[['토마토',4],['오이',4]],['봄','여름'],['토마토','오이']],
+['고추튀김',3,20,T,'복어',[['밀',8]],[['고추',4],['옥수수',4]],['여름','가을'],['고추','옥수수']],
+['키위 카르파초',3,20,T,'실러캔스',[['비트',8]],[['키위',4],['양파',4]],['봄','겨울'],['키위','양파']],
+['바다거북 수프',3,20,T,'바다거북',[['호박',4]],[['고구마',4],['고추',4]],['가을'],['고구마']]
+];
+const mats=d=>[...(d[4]?[[d[4],1]]:[]),...d[5],...d[6]];
+const GROUPS=['물고기','바닐라 작물','농부 작물'];
+const GM={};D.forEach(d=>{if(d[4])GM[d[4]]='물고기';d[5].forEach(([m])=>GM[m]='바닐라 작물');d[6].forEach(([m])=>GM[m]='농부 작물')});
+const MATS=GROUPS.flatMap(g=>Object.keys(GM).filter(m=>GM[m]===g));
+const TIERS=['전체','1단계','2단계','3단계'],SEAS=['전체','봄','여름','가을','겨울'];
+const KEY='cook-calc-v1';
+let S={q:{},p:{},h:{},t:'전체',s:'전체'};
+try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)S={...S,...v}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const fmt=n=>Math.round(n*100)/100===Math.round(n)?Math.round(n).toLocaleString('ko-KR'):(Math.round(n*100)/100).toLocaleString('ko-KR');
+const tf=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return [h?h+'시간':'',m?m+'분':'',x||!(h||m)?x+'초':''].filter(Boolean).join(' ')};
+S.self=S.self||{};
+const price=m=>S.self[m]?0:(+S.p[m]||0);
+const nop=m=>!S.self[m]&&!(+S.p[m]);
+S.gp=S.gp||{};if(S.sell){for(const n in S.sell){S.gp[n]=S.gp[n]||{};if(S.gp[n]['일반']==null)S.gp[n]['일반']=S.sell[n]}delete S.sell}
+if(S.cfg&&S.cfg.pr==null&&('pf' in S.cfg))S.cfg.pr=(S.cfg.pf?1:0)+(S.cfg.pc?2:0);
+S.cfg={lv:1,st:'',kn:0,ov:'',gm:'',bp:'',pr:3,ev:false,up:true,man:false,mp:{},...(S.cfg||{})};
+const C=S.cfg,GR=['일반','고급','희귀'];
+const gpv=(n,g)=>+(S.gp[n]||{})[g]||0;
+const hasGp=n=>GR.some(g=>gpv(n,g));
+const lerp=(pts,x)=>{let v=0;for(const[a,va]of pts)if(x>=a)v=va;return v};
+const TIME_P=[[1,.9],[10,39],[11,40.5],[21,42]];
+const LOSS_P=[[1,.5],[10,.5],[11,1.5],[21,3],[31,6],[41,11],[51,13]];
+const UP_P=[[1,2.3],[10,2.6],[11,6.4],[21,13.9],[31,33.9],[41,53.9],[51,63.9]];
+const DEM=[0,2.3,3.4,4.4,5.2,5.9,6.6,7.3,7.9,8.4,9,9.5,10,10.5,11,11.5,11.9,12.3,12.8,13.2,31.1];
+const OV={일반:7.5,고급:11,희귀:15},GMV={일반:5,고급:7.5,희귀:10};
+function model(){
+  const lv=Math.max(1,Math.min(60,Math.floor(+C.lv||1)));
+  const stage=lv>=30?4:lv>=20?3:lv>=10?2:1,batch=[1,3,4,6][stage-1],maxSt=lv>=30?7:lv>=20?4:lv>=10?3:lv>=5?2:1;
+  const st=Math.max(1,Math.min(maxSt,Math.floor(+C.st||maxSt)));
+  const tRed=Math.min(57,lerp(TIME_P,lv)+(OV[C.ov]||0)),loss=Math.min(100,lerp(LOSS_P,lv)+(GMV[C.gm]||0));
+  const up=C.up?Math.min(90,lerp(UP_P,lv)):0,dem=Math.min(100,(DEM[+C.kn||0]||0)*(C.ev?1.2:1));
+  return{lv,stage,batch,maxSt,st,tRed,loss,up,dem,bp:+C.bp||0};
+}
+const kOf=d=>Math.min(Math.max(0,Math.min(3,+C.pr||0)),(d[4]?1:0)+d[6].length);
+function odds(k,M){
+  if(C.man){const v=['일반','고급','희귀','탄'].map(g=>Math.max(0,+C.mp[g]||0)),t=v.reduce((a,b)=>a+b,0)||1;return v.map(x=>x/t*100)}
+  const b=[10,7.7,5.3,3][M.stage-1]*(1-.1*k),sc=(100-b)/90;let n=60*sc,g=25*sc,r=5*sc;const add=5*k,ng=n+g;n-=add*n/ng;g-=add*g/ng;r+=add;
+  const u=M.up/100;return[n*(1-u),g*(1-u)+n*u,r+g*u,b];
+}
+function craft(d,M){
+  const o=odds(kOf(d),M),pb=o[3]/100,nb=1-pb;
+  const gv=GR.reduce((s,g,i)=>s+o[i]/100*gpv(d[0],g),0);
+  const val=gv+pb*M.bp+(nb>0?M.dem/100*gv/nb:0);
+  const cost=unit(d)*(1-M.loss/100);
+  const t=d[3]*(1-M.tRed/100)*(1-Math.min(15,5*kOf(d))/100);
+  return{o,val,cost,t};
+}
+const own=m=>Math.max(0,Math.floor(+S.h[m]||0));
+const unit=d=>mats(d).reduce((s,[m,c])=>s+price(m)*c,0);
+const missing=d=>mats(d).some(([m])=>nop(m));
+const mi=m=>ICONS.mat[m]?`<img class="mi" src="${ICONS.mat[m]}" alt="" width="20" height="20">`:'';
+const $=id=>document.getElementById(id);
+
+function chipRow(el,list,key){
+  el.innerHTML=list.map(c=>`<button type="button" data-c="${c}" aria-pressed="${S[key]===c}">${c==='전체'&&key==='s'?'모든 계절':c}</button>`).join('');
+  el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S[key]=b.dataset.c;for(const x of el.children)x.setAttribute('aria-pressed',x===b);save();renderList()});
+}
+chipRow($('tiers'),TIERS,'t');chipRow($('seasons'),SEAS,'s');
+
+function renderList(){
+  const vis=D.map((d,i)=>[d,i]).filter(([d])=>(S.t==='전체'||S.t===d[1]+'단계')&&(S.s==='전체'||!d[7].length||d[7].includes(S.s)));
+  $('list').innerHTML=vis.length?vis.map(([d,i])=>`
+  <div class="dish" id="d${i}">
+    <h3><img class="ico" src="${ICONS.dish[d[0]]}" alt="" width="36" height="36">${d[0]} <span class="lv">${d[1]}단계 · 숙련도 ${d[2]}</span></h3>
+    <div class="mats">${d[4]?`<span class="fish">${d[4]} ×1</span>`:''}${[...d[5],...d[6]].map(([m,c])=>`<span>${mi(m)}${m} ×${c}</span>`).join('')}</div>
+    ${d[7].length?`<div class="ssn"><span>계절 ${d[7].join('·')}</span><span>제철 재료 <em>${d[8].join('·')}</em></span></div>`:''}
+    <div class="cost" id="c${i}"></div>
+    <div class="gps">${GR.map(g=>`<label>${g} <input type="number" min="0" step="any" inputmode="decimal" data-s="${i}" data-g="${g}" value="${(S.gp[d[0]]||{})[g]??''}" placeholder="0" aria-label="${d[0]} ${g} 판매가"></label>`).join('')}</div>
+    <div class="step">
+      <button type="button" data-i="${i}" data-d="-1" aria-label="${d[0]} 하나 빼기">−</button>
+      <input type="number" min="0" inputmode="numeric" id="q${i}" data-i="${i}" value="${S.q[d[0]]||0}" aria-label="${d[0]} 개수">
+      <button type="button" data-i="${i}" data-d="1" aria-label="${d[0]} 하나 더하기">+</button>
+    </div>
+  </div>`).join(''):'<p class="empty">이 조건에 맞는 요리가 없어요.</p>';
+  update();
+}
+$('list').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;const d=D[b.dataset.i];S.q[d[0]]=Math.max(0,(S.q[d[0]]||0)+ +b.dataset.d);$('q'+b.dataset.i).value=S.q[d[0]];save();update()});
+$('list').addEventListener('input',e=>{const t=e.target;if(t.dataset.s){const k=D[t.dataset.s][0],o=S.gp[k]=S.gp[k]||{};if(t.value==='')delete o[t.dataset.g];else o[t.dataset.g]=+t.value;save();update();return}if(!t.dataset.i)return;S.q[D[t.dataset.i][0]]=Math.max(0,Math.floor(+t.value||0));save();update()});
+
+const pr=$('prices');
+pr.innerHTML=GROUPS.map(g=>`<div><h3>${g}</h3><div class="ph"><span></span><span>보유</span><span>단가</span><span>자체 수급</span></div>${MATS.filter(m=>GM[m]===g).map(m=>`<div class="pr${S.self[m]?' self':''}"><span>${mi(m)}${m}</span><input type="number" min="0" inputmode="numeric" data-h="${m}" value="${S.h[m]||''}" placeholder="0" aria-label="${m} 보유 수량"><input type="number" min="0" step="any" inputmode="decimal" data-m="${m}" value="${S.p[m]??''}" placeholder="0" aria-label="${m} 단가"${S.self[m]?' disabled':''}><label class="selfbox" title="자체 수급"><input type="checkbox" data-self="${m}"${S.self[m]?' checked':''} aria-label="${m} 자체 수급"></label></div>`).join('')}</div>`).join('');
+pr.addEventListener('change',e=>{const t=e.target;if(!t.dataset.self)return;const m=t.dataset.self;if(t.checked)S.self[m]=true;else delete S.self[m];const row=t.closest('.pr');row.classList.toggle('self',t.checked);row.querySelector('input[data-m]').disabled=t.checked;save();update()});
+pr.addEventListener('input',e=>{const t=e.target;
+  if(t.dataset.h){if(t.value===''||+t.value<=0)delete S.h[t.dataset.h];else S.h[t.dataset.h]=Math.floor(+t.value)}
+  else if(t.dataset.m){if(t.value==='')delete S.p[t.dataset.m];else S.p[t.dataset.m]=+t.value}
+  else return;save();update()});
+
+function need(){const r={};D.forEach(d=>{const q=S.q[d[0]]||0;if(q)mats(d).forEach(([m,c])=>r[m]=(r[m]||0)+c*q)});return r}
+function update(){
+  const M=model();renderCfg(M);
+  let rev=0,noSell=0,full=0,ecost=0,count=0,time=0,maxT=0;const EX=[0,0,0,0];let exDem=0;
+  D.forEach((d,i)=>{
+    const q=S.q[d[0]]||0,cr=craft(d,M);count+=q;full+=unit(d)*q;
+    if(q){rev+=cr.val*q;ecost+=cr.cost*q;time+=cr.t*q;maxT=Math.max(maxT,cr.t);cr.o.forEach((p,j)=>EX[j]+=p/100*q);exDem+=M.dem/100*q;if(!hasGp(d[0]))noSell++}
+    const el=$('c'+i);if(!el)return;
+    const pu=cr.val-cr.cost,pf1=p=>(Math.round(p*10)/10)+'%';
+    el.innerHTML=`<span class="rowodds">손질 ${kOf(d)}종 적용 · 희귀 ${pf1(cr.o[2])} · 탄 ${pf1(cr.o[3])}</span><br>${hasGp(d[0])?(GR.filter(g=>!gpv(d[0],g)).length?`<span style="color:var(--warn)">${GR.filter(g=>!gpv(d[0],g)).join('·')} 판매가가 비어 0으로 계산 중 · </span>`:''):'<span style="color:var(--warn)">판매가를 넣어야 손질·숙련도 효과가 수익에 반영돼요 · </span>'}개당 원가 <b>${fmt(cr.cost)}</b>${M.loss>0&&unit(d)?`<span style="color:var(--mute)"> (소진 시 ${fmt(unit(d))})</span>`:''}${hasGp(d[0])?` · 기대 판매가 <b>${fmt(cr.val)}</b> · 기대 순수익 <b class="${pu>=0?'pos':'neg'}">${fmt(pu)}</b>`:''}${q?` · 소계 <b>${fmt(unit(d)*q)}</b>`:''}${missing(d)?` · <button type="button" class="gp" data-gp="${mats(d).map(a=>a[0]).find(m=>nop(m))}">단가 미입력 있음</button>`:''}`;
+    $('d'+i).classList.toggle('on',q>0);
+  });
+  const n=need(),keys=MATS.filter(m=>n[m]),buy=m=>Math.max(0,n[m]-own(m));
+  const total=keys.reduce((s,m)=>s+price(m)*buy(m),0),saved=full-total;
+  $('tot').textContent=fmt(total);$('saved').textContent=fmt(saved);$('cnt').textContent=count.toLocaleString('ko-KR');
+  const max=Math.max(1,...D.map(unit))*20;
+  const h=total?Math.max(12,Math.min(80,18+62*Math.log10(1+total)/Math.log10(1+max))):0;
+  const s=$('soup');s.setAttribute('y',152-h);s.setAttribute('height',h);
+  const profit=rev-ecost;$('profit').textContent=fmt(profit);
+  const autoH=Math.max(time/(M.st*M.batch),maxT)/3600,manH=(+S.th||0)+(+S.tmn||0)/60,hrs=manH>0?manH:autoH;
+  $('perh').textContent=count&&hrs>0&&hasAnyGp()?fmt(profit/hrs):'–';
+  $('tmhint').textContent=count?(manH>0?`직접 입력한 시간으로 계산해요. (설정 기준 예상 ${tf(Math.round(autoH*3600))})`:`조리대 ${M.st}개 · 한 번에 ${M.batch}개 기준 예상 소요 시간: ${tf(Math.round(autoH*3600))}. 다르면 직접 입력해 주세요.`):'';
+  const ex=['일반','고급','희귀','탄'].map((g,j)=>`${g} ${fmt(EX[j])}`).join(' · ')+(exDem?` · 축복 +${fmt(exDem)}`:'');
+  $('sum').innerHTML=count?`<div><dt>예상 결과</dt><dd style="white-space:normal;text-align:right">${ex}</dd></div><div><dt>기대 판매액</dt><dd>${fmt(rev)}</dd></div><div><dt>재료비 (전부 소진 시)</dt><dd>${fmt(full)}</dd></div>${M.loss>0?`<div><dt>재료 손실 방지 ${fmt(M.loss)}%로 아끼는 재료비</dt><dd class="pos">−${fmt(full-ecost)}</dd></div>`:''}<div><dt>기대 재료비</dt><dd>${fmt(ecost)}</dd></div><div class="big"><dt>기대 순수익</dt><dd class="${profit>=0?'pos':'neg'}">${fmt(profit)}</dd></div>${hrs>0?`<div><dt>소요 시간</dt><dd>${tf(Math.round(hrs*3600))}</dd></div><div><dt>시간당 수익</dt><dd>${fmt(rev/hrs)}</dd></div><div class="big"><dt>시간당 순수익</dt><dd class="${profit>=0?'pos':'neg'}">${fmt(profit/hrs)}</dd></div>`:''}${noSell?`<p class="small" style="color:var(--warn)">판매가가 비어 있는 요리 ${noSell}종은 0으로 계산했어요.</p>`:''}${total<full?`<p class="small">보유 재료를 공짜로 치면 기대 순수익 ${fmt(rev-total*(1-M.loss/100))}</p>`:''}`:'';
+  if(!keys.length){$('shop').innerHTML='<p class="empty">왼쪽에서 만들 요리의 개수를 늘리면 여기에 필요한 재료가 모입니다.</p>';return}
+  const miss=keys.filter(m=>nop(m)&&buy(m)).length;
+  $('shop').innerHTML=`<table class="stack"><thead><tr><th>재료</th><th class="n">필요</th><th class="n">보유</th><th class="n">구매</th><th class="n">단가</th><th class="n">금액</th></tr></thead><tbody>${
+    keys.map(m=>`<tr class="${buy(m)?'':'done'}"><td>${mi(m)}${m}</td><td class="n">${n[m].toLocaleString('ko-KR')}</td><td class="n">${own(m)?Math.min(own(m),n[m]).toLocaleString('ko-KR'):'–'}</td><td class="n"><b>${buy(m).toLocaleString('ko-KR')}</b></td><td class="n${!nop(m)||!buy(m)?'':' miss'}">${S.self[m]?'<span class="selfc">자체 수급</span>':price(m)?fmt(price(m)):`<button type="button" class="gp" data-gp="${m}">미입력</button>`}</td><td class="n">${fmt(price(m)*buy(m))}</td></tr>`).join('')
+  }</tbody><tfoot><tr><td colspan="5">구매 합계</td><td class="n">${fmt(total)}</td></tr></tfoot></table>${saved>0?`<p class="small">보유 재료로 ${fmt(saved)} 아꼈어요 (전부 사면 ${fmt(full)}).</p>`:''}${miss?`<p class="small" style="color:var(--warn)">단가가 비어 있는 재료 ${miss}종은 0으로 계산했어요.</p>`:''}`;
+}
+
+$('copy').addEventListener('click',async e=>{
+  const n=need(),keys=MATS.filter(m=>n[m]>own(m));if(!Object.keys(n).length)return;
+  const made=D.filter(d=>S.q[d[0]]).map(d=>`${d[0]} ×${S.q[d[0]]}`).join(', ');
+  const txt=`[요리] ${made}\n`+keys.map(m=>`${m} ${n[m]-own(m)}개 구매 = ${fmt(price(m)*(n[m]-own(m)))}`).join('\n')+`\n구매 합계 ${$('tot').textContent}`;
+  try{await navigator.clipboard.writeText(txt);e.target.textContent='복사됨'}catch(err){e.target.textContent='복사 실패'}
+  setTimeout(()=>e.target.textContent='목록 복사',1500);
+});
+for(const id of ['th','tmn']){const el=$(id);el.value=S[id]??'';el.addEventListener('input',()=>{if(el.value===''||+el.value<0)delete S[id];else S[id]=+el.value;save();update()})}
+$('clearQ').addEventListener('click',()=>{S.q={};save();renderList()});
+$('clearH').addEventListener('click',()=>{S.h={};save();for(const i of pr.querySelectorAll('input[data-h]'))i.value='';update()});
+let armed=false;
+$('clearP').addEventListener('click',e=>{
+  if(!armed){armed=true;e.target.textContent='한 번 더 누르면 지워집니다';setTimeout(()=>{armed=false;e.target.textContent='단가 전부 지우기'},2500);return}
+  armed=false;S.p={};save();for(const i of pr.querySelectorAll('input[data-m]'))i.value='';e.target.textContent='단가 전부 지우기';update();
+});
+const stock=$('stock'),jb=$('jump');
+const go=el=>el.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+let atStock=false;
+if(window.IntersectionObserver)new IntersectionObserver(es=>{atStock=es[0].isIntersecting;jb.textContent=atStock?'↑ 계산기로':'보유 수량·단가 입력 ↓';jb.classList.toggle('up',atStock)},{threshold:.15}).observe(stock);
+jb.addEventListener('click',()=>atStock?go(document.body):go(stock));
+for(const b of document.querySelectorAll('[data-go=stock]'))b.addEventListener('click',()=>go(stock));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-gp]');if(!b)return;
+  const inp=[...pr.querySelectorAll('input[data-m]')].find(x=>x.dataset.m===b.dataset.gp);if(!inp)return;
+  const row=inp.closest('.pr');
+  inp.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  setTimeout(()=>inp.focus({preventScroll:true}),350);
+  for(const r of pr.querySelectorAll('.pr.hl'))r.classList.remove('hl');row.classList.add('hl');setTimeout(()=>row.classList.remove('hl'),2400);
+});
+function hasAnyGp(){return D.some(d=>S.q[d[0]]&&hasGp(d[0]))}
+$('cKn').innerHTML=DEM.map((v,i)=>`<option value="${i}">+${i}${i?` (축복 ${v}%)`:''}</option>`).join('');
+const CF={cLv:'lv',cSt:'st',cKn:'kn',cOv:'ov',cGm:'gm',cBp:'bp',cPr:'pr'},CB={cEv:'ev',cUp:'up',cMan:'man'};
+for(const id in CF){const el=$(id);el.value=C[CF[id]]??'';el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{C[CF[id]]=el.value;save();update()})}
+for(const id in CB){const el=$(id);el.checked=!!C[CB[id]];el.addEventListener('change',()=>{C[CB[id]]=el.checked;save();update()})}
+for(const el of document.querySelectorAll('[data-mp]')){el.value=C.mp[el.dataset.mp]??'';el.addEventListener('input',()=>{C.mp[el.dataset.mp]=el.value;save();update()})}
+function renderCfg(M){
+  $('cfgMini').textContent=`숙련도 ${M.lv} · ${M.stage}차 · 손질 ${Math.min(3,+C.pr||0)}종 · 식칼 +${+C.kn||0}${C.ov?' · 화덕 '+C.ov:''}${C.gm?' · 미식 '+C.gm:''}${C.man?' · 확률 직접 입력':''}`;
+  $('manBox').hidden=!C.man;$('cSt').max=M.maxSt;$('cSt').placeholder=`최대 ${M.maxSt}`;
+  $('stats').innerHTML=[`${M.stage}차 (탄 기본 ${[10,7.7,5.3,3][M.stage-1]}%)`,`조리대 최대 <b>${M.maxSt}</b>개`,`한 번에 <b>${M.batch}</b>개`,`요리 시간 −<b>${fmt(M.tRed)}</b>%`,`재료 손실 방지 <b>${fmt(M.loss)}</b>%`,C.up&&!C.man?`등급 상승 <b>${fmt(M.up)}</b>%`:'',`데메테르의 축복 <b>${fmt(M.dem)}</b>%`].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+  const k=Math.min(3,+C.pr||0),o=odds(k,M);
+  const NM=['일반','고급','희귀','탄'],pf=p=>(Math.round(p*10)/10).toLocaleString('ko-KR')+'%';
+  const vw=o.map(p=>p>0?Math.max(p,11):0),vt=vw.reduce((x,y)=>x+y,0)||1;
+  $('odds').innerHTML=o.map((p,j)=>p>0?`<div class="o${j+1}" style="width:${vw[j]/vt*100}%" title="${NM[j]} ${pf(p)}">${p>=9?pf(p):`<small>${pf(p)}</small>`}</div>`:'').join('');
+  $('olg').innerHTML=o.map((p,j)=>`<span><i class="o${j+1}"></i>${NM[j]} <b>${pf(p)}</b></span>`).join('');
+  $('oddsCap').textContent=C.man?'직접 입력한 확률이에요.':`손질 ${k}종 기준 확률이에요.`;
+}
+const cfgDet=$('cfgDet');cfgDet.open=S.cfgOpen!==false;cfgDet.addEventListener('toggle',()=>{S.cfgOpen=cfgDet.open;save()});
+const impMsg=$('impMsg');
+const setMsg=(t,c)=>{impMsg.textContent=t;impMsg.className='small'+(c?' '+c:'')};
+function applyShop(){
+  const SH=S.shop;if(!SH)return;
+  const inFile=new Set(Object.values(SH.prices).flatMap(Object.keys));
+  const hit=D.filter(p=>inFile.has(p[0])),miss=D.filter(p=>!inFile.has(p[0])).map(p=>p[0]);
+  hit.forEach(p=>{const o=S.gp[p[0]]={};GR.forEach(g=>{const v=(SH.prices[g]||{})[p[0]];if(v!=null)o[g]=v})});save();renderList();
+  setMsg(`${SH.at?SH.at+' 기준 · ':''}일반·고급·희귀 시세를 ${hit.length}종에 적용했어요.${miss.length?' 파일에 없는 요리: '+miss.join(', '):''}${SH.next?' · 다음 시세 변동 '+SH.next:''}`,hit.length?'ok':'err');
+}
+if(S.shop&&!S.shopAll){S.shopAll=1;applyShop()}
+let xlsxP=null;
+const loadXLSX=()=>xlsxP||(xlsxP=new Promise((res,rej)=>{if(window.XLSX)return res();const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=res;sc.onerror=()=>{xlsxP=null;rej(new Error('lib'))};document.head.appendChild(sc)}));
+$('shopFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;setMsg('파일을 읽는 중…');
+  try{
+    await loadXLSX();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const names=new Set(D.map(p=>p[0])),prices={},grades=['일반','고급','희귀'];let at='',next='';
+    for(const sn of wb.SheetNames){
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+      const hi=rows.findIndex(r=>r.some(c=>String(c).trim()==='현재 판매가'));
+      if(hi<0){const r=rows.find(r=>String(r[0]).includes('요리'));if(r){const k=rows[0].findIndex(c=>String(c).includes('다음'));if(k>=0)next=String(r[k])}continue}
+      const t=rows.slice(0,hi).flat().map(String).join(' ').match(/기준 시각\s*([0-9-]+\s+[0-9]{1,2}:[0-9]{2})/);if(t)at=t[1];
+      const H=rows[hi].map(c=>String(c).trim()),ci=k=>H.indexOf(k);
+      const cP=ci('현재 판매가'),cB=ci('묶음'),cI=ci('아이템'),cG=ci('등급');
+      for(const r of rows.slice(hi+1)){
+        let n=cB>=0?String(r[cB]).trim():'';
+        if(!names.has(n)&&cI>=0)n=[...names].find(x=>String(r[cI]).includes(x))||n;
+        if(!names.has(n))continue;
+        const g=cG>=0&&grades.includes(String(r[cG]).trim())?String(r[cG]).trim():'일반',v=Number(r[cP]);
+        if(!isFinite(v))continue;(prices[g]=prices[g]||{})[n]=v;
+      }
+    }
+    if(!Object.keys(prices).length){setMsg('이 파일에서 요리 시세를 찾지 못했어요. \'아이템\'·\'현재 판매가\' 열이 있는 시세 파일인지 확인해 주세요.','err');return}
+    S.shop={prices,at,next};S.shopAll=1;applyShop();
+  }catch(err){setMsg(err.message==='lib'?'엑셀을 읽는 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.':'파일을 읽지 못했어요. 시세 엑셀 파일이 맞는지 확인해 주세요.','err')}
+  e.target.value='';
+});
+renderList();
+}
+</script>
+</body>
+</html>

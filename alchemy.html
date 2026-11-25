@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>연금술 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 게임 도구 — 빠르고 단단하게, 장식은 플라스크 하나
+   IDEA: 연금술사의 양조대 장부 — 왼쪽 레시피, 오른쪽 장보기 쪽지
+   PICTURE: 상단 띠의 플라스크, 총 재료비만큼 차오르는 금빛 비약
+   COLOUR and TYPE: 비약 자홍 #7a1d45 띠, 청록 보조, 금 강조 / Do Hyeon + Noto Sans KR
+   LAYOUT: 결과 띠 → 비약 목록 | 장보기 목록 → 재료 단가 표 */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#141116);--ink:light-dark(#1b1520,#f1ecf3);--mute:light-dark(#6c6372,#a99fae);--card:light-dark(#f5f0f4,#1f1a22);--line:light-dark(#e3d9e1,#342b37);--band:#7a1d45;--teal:light-dark(#17645f,#62c4ba);--gold:#f2c14e;--warn:light-dark(#b0391f,#ff9b7d)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:16px}body{margin:0;padding-bottom:72px;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2{font-family:"Do Hyeon",sans-serif;font-weight:400;line-height:1.05;margin:0;text-wrap:balance}
+h2{font-size:28px;margin-bottom:14px}
+.top{background:var(--band);color:#fff}
+.top .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+.top h1{font-size:clamp(32px,5vw,48px)}
+.top h1 .by{font-family:"Noto Sans KR",sans-serif;font-size:15px;font-weight:500;color:#f3d9e5;margin-left:6px;white-space:nowrap}
+.top p{margin:8px 0 0;color:#f3d9e5;max-width:52ch}
+.res{display:flex;gap:28px;flex-wrap:wrap;margin-top:22px}
+.res div{display:flex;flex-direction:column}
+.res b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:clamp(40px,8vw,72px);line-height:1;color:var(--gold);white-space:nowrap;font-variant-numeric:tabular-nums}
+.res .s b{font-size:clamp(28px,4vw,40px);color:#fff}
+.res span{font-size:14px;color:#f3d9e5}
+.flask{width:150px;height:190px}
+.flask #liq{transition:y .5s,height .5s}
+@media(prefers-reduced-motion:reduce){.flask #liq{transition:none}}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:start}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+button{font:inherit;color:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);min-height:44px;padding:0 14px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.chips button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:var(--bg);font-weight:700}
+.pot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.pot h3{margin:0;font-size:17px;display:flex;gap:4px 8px;align-items:baseline;flex-wrap:wrap}
+.ico{width:36px;height:36px;image-rendering:pixelated;align-self:center;flex:none}
+.mi{width:20px;height:20px;image-rendering:pixelated;vertical-align:-4px;margin-right:5px}
+.mats span{display:inline-flex;align-items:center}
+.tog{display:flex;align-items:center;gap:10px;min-height:44px;margin:-6px 0 8px;font-size:15px;cursor:pointer}
+.tog input{width:22px;height:22px;min-height:0;accent-color:var(--teal)}
+.mats span.swp{outline:2px solid var(--teal);outline-offset:-2px}
+.alt{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--bg);font-size:15px}
+.alt b{font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.alt .up{color:var(--warn);white-space:nowrap}.alt .dn{color:var(--teal);white-space:nowrap}
+.alt small{flex-basis:100%;color:var(--mute);font-size:13px}
+.lv{font-size:13px;font-weight:500;color:var(--teal);white-space:nowrap}
+.fx{font-size:13px;font-weight:400;color:var(--mute)}
+.mats{display:flex;flex-wrap:wrap;gap:6px;grid-column:1}
+.mats span{font-size:13px;background:var(--card);border-radius:6px;padding:2px 8px;white-space:nowrap}
+.cost{font-size:14px;color:var(--mute);grid-column:1}
+.cost b{color:var(--ink);font-variant-numeric:tabular-nums}
+.sp{grid-column:1;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.sp input{width:120px;min-height:38px;text-align:right}
+.pos{color:var(--teal)!important}.neg{color:var(--warn)!important}
+.sp{flex-wrap:wrap;gap:6px 16px}.sp label{display:flex;align-items:center;gap:8px}
+.cmp td,.cmp th{padding:6px 4px}.cmp .big td{font-weight:700;font-size:17px;border-top:2px solid var(--line)}
+.sum{margin:18px 0 0;padding:14px;border-radius:10px;background:var(--bg);display:grid;gap:6px}
+.sum div{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.sum dt{color:var(--mute)}.sum dd{margin:0;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sum .big{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-weight:700;font-size:17px}
+.tm{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:14px;font-size:15px}
+.tm input{width:72px;text-align:right}
+.step{grid-row:1/span 5;grid-column:2;display:flex;align-items:center;gap:4px;align-self:center}
+.step button{width:44px;padding:0;font-size:20px}
+.step input{width:64px;text-align:center}
+input{font:inherit;font-size:16px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px;font-variant-numeric:tabular-nums}
+.pot.on h3{color:var(--band)}:root[data-theme=dark] .pot.on h3{color:var(--gold)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .pot.on h3{color:var(--gold)}}
+.note{position:sticky;top:62px;background:var(--card);border-radius:14px;padding:20px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-weight:500;color:var(--mute);font-size:13px;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{padding:8px 4px;border-bottom:1px solid var(--line)}
+.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.miss{color:var(--warn)}
+tfoot td{font-weight:700;border:0;padding-top:12px}
+.empty{color:var(--mute);padding:20px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.prices{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+.pr,.ph{display:grid;grid-template-columns:minmax(0,1fr) 76px 100px;gap:8px;align-items:center;padding:3px 0;font-size:15px}
+.ph{font-size:13px;color:var(--mute);padding:0}.ph span{text-align:right}
+.pr input{width:100%;text-align:right;padding:0 8px}
+.pr>span{display:flex;align-items:center;line-height:1.3;overflow-wrap:anywhere}.pr>span .mi{flex:none}
+tr.done td{color:var(--mute)}
+.prices h3{font-size:15px;margin:0 0 8px;color:var(--teal)}
+.jump{position:fixed;right:16px;bottom:16px;z-index:5;background:var(--teal);color:var(--bg);border:0;font-weight:700;box-shadow:0 6px 18px #0004;border-radius:999px;padding:0 18px}
+.jump.up{background:var(--ink)}
+.gp{min-height:30px;padding:2px 10px;border:1px dashed var(--warn);color:var(--warn);background:transparent;border-radius:8px;font-size:13px;font-weight:500}
+.gp:hover{background:light-dark(#fbe9e4,#3a201a)}
+.pr.hl input[data-m]{outline:3px solid var(--gold);outline-offset:1px;animation:hl 1.6s ease-out}
+@keyframes hl{0%,30%{box-shadow:0 0 0 6px #f2c14e88}100%{box-shadow:0 0 0 0 #f2c14e00}}
+@media(prefers-reduced-motion:reduce){.pr.hl input[data-m]{animation:none}}
+.pr,.ph{grid-template-columns:minmax(0,1fr) 64px 92px 52px!important}
+.ph span:last-child{text-align:center;font-size:12px;line-height:1.2}
+.selfbox{display:flex;justify-content:center;align-items:center;min-height:44px;cursor:pointer}
+.selfbox input{width:22px;height:22px;min-height:0;accent-color:var(--teal);cursor:pointer}
+.pr.self span{color:var(--teal)}.pr.self input[data-m]{opacity:.4;text-decoration:line-through}
+.selfc{color:var(--teal);font-size:13px;font-weight:500}
+.imp{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:18px}
+.imp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.filebtn{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:10px;background:var(--teal);color:var(--bg);font-weight:700;cursor:pointer}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.filebtn:focus-within{outline:3px solid var(--gold);outline-offset:2px}
+.gsel{display:flex;align-items:center;gap:8px;font-size:15px}
+select{font:inherit;font-size:16px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 10px}
+#impMsg.ok{color:var(--teal)}#impMsg.err{color:var(--warn)}
+.cfgband{background:var(--card)}
+.cfgsum{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;cursor:pointer;list-style:none;min-height:44px}
+.cfgsum::-webkit-details-marker{display:none}
+.cfgsum h2{margin:0}
+.cfgmini{font-size:14px;color:var(--mute);flex:1 1 220px}
+#cfgDet[open] .cfgmini{display:none}
+.chev{width:12px;height:12px;border-right:3px solid var(--ink);border-bottom:3px solid var(--ink);transform:rotate(45deg);margin:0 6px 4px auto;transition:transform .2s}
+#cfgDet[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+.cfgsum:focus-visible{outline:3px solid var(--teal);outline-offset:4px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){.chev{transition:none}}
+.cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px 18px;margin-top:6px}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--mute)}
+.fld input,.fld select{width:100%}
+.fld.chk{flex-direction:row;align-items:center;gap:10px;color:var(--ink);font-size:15px;min-height:44px;cursor:pointer}
+.fld.chk input{width:22px;height:22px;min-height:0;accent-color:var(--teal)}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.stats span{background:var(--bg);border-radius:8px;padding:4px 10px;font-size:14px;white-space:nowrap}
+.stats b{font-variant-numeric:tabular-nums}
+.odds{display:flex;height:34px;border-radius:10px;overflow:hidden;margin-top:14px;font-size:13px;font-weight:700}
+.odds div{display:flex;align-items:center;justify-content:center;color:#fff;white-space:nowrap;overflow:hidden;min-width:0}
+.o1{background:#8a8f98}.o2{background:#2f7fd0}.o3{background:#c08a14}
+.olg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:15px;color:var(--ink);margin-top:8px}.olg b{font-variant-numeric:tabular-nums}
+.odds small{font-size:12px}
+.odds div+div{box-shadow:inset 2px 0 0 #fff6}
+.olg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.man{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.man label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+.rowodds{font-size:13px;color:var(--teal)}
+.gps{grid-column:1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:14px;color:var(--mute)}
+.gps label{display:flex;align-items:center;gap:6px}
+.gps input{width:92px;min-height:38px;text-align:right}
+details.note2{margin-top:14px;font-size:13px;color:var(--mute)}
+details.note2 summary{cursor:pointer;min-height:32px}
+.gpt{grid-column:1;display:grid;grid-template-columns:auto repeat(3,minmax(0,92px));gap:4px 8px;align-items:center;font-size:13px;color:var(--mute);justify-content:start}
+.gpt input{min-height:36px;text-align:right;padding:0 6px;width:100%}
+.gpt span{text-align:center}
+.base{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px}
+.base label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+.lab{font-size:13px;color:var(--mute);margin:0 0 6px}
+.small{font-size:13px;color:var(--mute);margin:6px 0 0}
+@media(max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}.note{position:static}}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:2px 0;padding-inline-start:6em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:5.5em;margin-inline-start:-6em;color:var(--mute);font-size:13px}.stack tfoot td::before{content:none}.stack tfoot td{padding-inline-start:0}.top .wrap{grid-template-columns:minmax(0,1fr)}.flask{display:none}.pot{grid-template-columns:minmax(0,1fr)}.step{grid-row:auto;grid-column:1;justify-self:start}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+<style id="sitenav-css">
+.sitenav{position:sticky;top:0;z-index:50;background:#14121c;border-bottom:1px solid #2c2838;font:500 15px/1 "Noto Sans KR",system-ui,sans-serif}
+.sitenav .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:4px;padding:0 max(5vw,16px);overflow-x:auto;scrollbar-width:none}
+.sitenav a{color:#c9c4d6;text-decoration:none;padding:0 14px;min-height:46px;display:flex;align-items:center;white-space:nowrap;border-bottom:3px solid transparent}
+.sitenav a:hover{color:#fff}
+.sitenav a[aria-current]{color:#fff;border-bottom-color:#f2c14e;font-weight:700}
+.sitenav .home{font-weight:700;color:#f2c14e;padding-left:0;margin-right:8px}
+</style>
+</head>
+<body>
+<nav class="sitenav"><div class="in"><a class="home" href="./">기린서버 생활 계산기</a><a href="enhance.html">강화 기대값</a><a href="alchemy.html" aria-current="page">연금술</a><a href="cooking.html">요리</a></div></nav>
+<header class="band top"><div class="wrap">
+  <div>
+    <h1>연금술 계산기 <small class="by">from.진솔</small></h1>
+    <p>만들 비약 개수를 정하고 아래에 재료 단가를 넣으면, 필요한 재료와 총비용이 바로 계산됩니다.</p>
+    <div class="res">
+      <div><b id="tot">0</b><span>구매할 재료비</span></div>
+      <div class="s"><b id="saved">0</b><span>보유분으로 절약</span></div>
+      <div class="s"><b id="profitU">0</b><span>기대 순수익 · 유저판매</span></div>
+      <div class="s"><b id="profitN">0</b><span>기대 순수익 · 상점판매</span></div>
+      <div class="s"><b id="perhU">–</b><span>시간당 · 유저판매</span></div>
+      <div class="s"><b id="perhN">–</b><span>시간당 · 상점판매</span></div>
+      <div class="s"><b id="cnt">0</b><span>제작할 비약</span></div>
+    </div>
+  </div>
+  <svg class="flask" viewBox="0 0 150 190" aria-hidden="true">
+    <defs><clipPath id="fc"><path d="M60 14h30v52l44 92a14 14 0 0 1-13 20H29a14 14 0 0 1-13-20l44-92z"/></clipPath>
+    <linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#f7d77c"/><stop offset=".6" stop-color="#f2c14e"/><stop offset="1" stop-color="#c9932a"/></linearGradient></defs>
+    <g clip-path="url(#fc)"><rect width="150" height="190" fill="#5e1535"/><rect id="liq" x="0" y="178" width="150" height="0" fill="url(#lg)"/>
+    <circle cx="58" cy="150" r="5" fill="#fff6" /><circle cx="84" cy="132" r="3.5" fill="#fff5"/><circle cx="70" cy="164" r="2.5" fill="#fff6"/></g>
+    <path d="M60 14h30v52l44 92a14 14 0 0 1-13 20H29a14 14 0 0 1-13-20l44-92z" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="54" y="6" width="42" height="12" rx="4" fill="#c99a6b" stroke="#fff" stroke-width="3"/>
+    <path d="M30 150l26-56" stroke="#fff8" stroke-width="5" stroke-linecap="round"/>
+  </svg>
+</div></header>
+
+<section class="band cfgband" id="cfgSec"><div class="wrap">
+  <details id="cfgDet" open><summary class="cfgsum"><h2>연금술사 설정</h2><span class="cfgmini" id="cfgMini"></span><span class="chev" aria-hidden="true"></span></summary>
+  <div class="cfg">
+    <label class="fld">연금술사 숙련도 (1~60)<input type="number" min="1" max="60" inputmode="numeric" id="cLv"></label>
+    <label class="fld">사용할 연금대 수<input type="number" min="1" max="7" inputmode="numeric" id="cSt"></label>
+    <label class="fld">막자 강화<select id="cKn"></select></label>
+    <label class="fld">넣은 가루 종류 수<select id="cPw"><option value="0">0종 (분쇄 안 함)</option><option value="1">1종</option><option value="2">2종 (심재+광물)</option></select></label>
+    <label class="fld">토트의 비약 (희귀 비약 확률)<select id="cTh"><option value="">안 마심</option><option>일반</option><option>고급</option><option>희귀</option></select></label>
+    <label class="fld chk"><input type="checkbox" id="cEv">저녁 이벤트 (축복 1.2배)</label>
+    <label class="fld chk"><input type="checkbox" id="cUp">숙련도·정제 등급 상승 반영</label>
+    <label class="fld chk"><input type="checkbox" id="cMan">결과 확률 직접 입력</label>
+  </div>
+  <div class="man" id="manBox" hidden style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <label>일반 %<input type="number" min="0" step="any" data-mp="일반"></label>
+    <label>고급 %<input type="number" min="0" step="any" data-mp="고급"></label>
+    <label>희귀 %<input type="number" min="0" step="any" data-mp="희귀"></label>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="odds" id="odds" aria-label="결과 확률"></div>
+  <div class="olg" id="olg"></div><p class="small" id="oddsCap"></p>
+  <details class="note2" id="baseDet"><summary>위키에 없는 기본값 조정 (현재 임시값)</summary>
+    <p>위키에는 비약의 기본 등급 확률과 차수가 오를 때 일반이 희귀로 바뀌는 비율이 나와 있지 않아요. 아래는 임시값이니 실제 수치를 알면 바꿔 주세요.</p>
+    <div class="base">
+      <label>1차 기본 일반 %<input type="number" min="0" step="any" data-bs="a"></label>
+      <label>1차 기본 고급 %<input type="number" min="0" step="any" data-bs="b"></label>
+      <label>1차 기본 희귀 %<input type="number" min="0" step="any" data-bs="c"></label>
+      <label>2차 일반→희귀 %<input type="number" min="0" max="100" step="any" data-bs="s2"></label>
+      <label>3차 일반→희귀 %<input type="number" min="0" max="100" step="any" data-bs="s3"></label>
+      <label>4차 일반→희귀 %<input type="number" min="0" max="100" step="any" data-bs="s4"></label>
+    </div>
+  </details>
+  <details class="note2"><summary>계산 기준 보기</summary>
+    <p>기린월드 위키(연금술사·비약·강화 문서) 수치를 썼어요. 숙련도 효과는 그 구간에 들어서면 받는 합계예요(제작 시간 감소·재료 손실 방지·등급 상승: Lv 1~9 0.9·0.5·2.3%, Lv 10 41·0.5·2.6%, Lv 11~20 42.5·1.5·6.4%, Lv 21~30 45.5·3·13.9%, Lv 31~40 47·6·26.4%, Lv 41~50 47·11·45.2%, Lv 51~60 47·13·75.2%). 막자 강화의 정제 값은 등급 상승 확률에 더하고(합계 최대 90%), 등급 상승은 일반→고급, 고급→희귀로 한 단계 오르는 확률로 적용했어요.</p>
+    <p>가루는 종류마다 희귀 +5%p, 제작 시간 −5%(최대 10%)이고, 토트의 비약은 희귀 +9/13.5/18%p예요. 늘어난 희귀만큼 일반·고급이 비율대로 줄어요. 토트의 축복은 같은 비약 1병을 더 만드는 확률(같은 등급 확률), 저녁 이벤트는 그 확률 1.2배예요. 재료 손실 방지는 재료를 쓰지 않고 만들 확률이라 원가에 (1 − 확률)을 곱했어요.</p>
+    <p>한 병 제작 시간은 바닐라 비약(이슬·산들바람) 30초, 나머지 56초에서 줄여 계산하고, 연금대 하나가 차수별 한 번에 1·3·4·6병을 만든다고 봤어요. 현자의 돌·증폭 기술과 농축은 넣지 않았어요.</p>
+  </details>
+  </details>
+</div></section>
+
+<main class="band"><div class="wrap grid">
+  <section>
+    <h2>비약 목록</h2>
+    <div class="imp">
+      <div class="imp-row">
+        <label class="filebtn">상점 시세 파일 불러오기<input type="file" id="shopFile" accept=".xlsx,.xls,.csv"></label>
+      </div>
+      <p class="small" id="impMsg">시세 엑셀 파일을 올리면 일반·고급·희귀 '현재 판매가'가 각 비약의 등급별 상점판매가에 자동으로 들어가요.</p>
+    </div>
+    <p class="lab">요구 숙련도 (고른 숙련도로 만들 수 있는 비약 모두 보기)</p>
+    <div class="chips" id="lvchips" role="group" aria-label="요구 숙련도별 보기"></div>
+    <p class="lab">효과 분류</p>
+    <div class="chips" id="chips" role="group" aria-label="직업별 보기"></div>
+    <div id="list"></div>
+  </section>
+  <aside class="note" aria-live="polite">
+    <h2>장보기 목록</h2>
+    <label class="tog"><input type="checkbox" id="sub"> 강화된 광물 대신 순수한 광물 사용</label>
+    <div id="shop"></div>
+    <div class="tm"><span>총 제작 시간 (직접 입력)</span><input type="number" min="0" inputmode="numeric" id="th" aria-label="총 제작 시간(시간)">시간<input type="number" min="0" inputmode="numeric" id="tmn" aria-label="총 제작 시간(분)">분</div>
+    <p class="small" id="tmhint"></p>
+    <div class="sum" id="sum"></div>
+    <div class="row">
+      <button type="button" id="copy">목록 복사</button>
+      <button type="button" id="clearQ">개수 초기화</button>
+      <button type="button" data-go="stock">보유 수량·단가 입력</button>
+    </div>
+  </aside>
+</div></main>
+
+<section class="band" id="stock" style="background:var(--card)"><div class="wrap">
+  <h2>보유 수량과 재료 단가</h2>
+  <p class="small" style="margin:-6px 0 18px">이미 가진 재료 수량을 넣으면 그만큼 빼고 살 양만 계산해요. 입력한 값은 이 브라우저에 저장돼서 다음에 열어도 그대로 남아 있습니다.</p>
+  <div class="prices" id="prices"></div>
+  <div class="row"><button type="button" id="clearH">보유 수량 지우기</button><button type="button" id="clearP">단가 전부 지우기</button></div>
+</div></section>
+<button type="button" class="jump" id="jump">보유 수량·단가 입력 ↓</button>
+
+<script>
+{
+const P=[
+['이슬의 비약',0,'마나회복','마나회복',[['수박조각',12]]],
+['산들바람의 비약',0,'마나회복속도','마나회복',[['설탕',12]]],
+['활력의 비약',1,'마나회복','마나회복',[['참나무 심재',1],['강화된 다이아몬드',1],['꿀이 든 병',1]]],
+['풍요의 비약',1,'가이아의 축복 확률','농부',[['자작나무 심재',1],['강화된 구리',1],['수박조각',8]]],
+['물결의 비약',1,'기척·입질 단축','어부',[['가문비나무 심재',1],['강화된 청금석',1],['말린 켈프',8]]],
+['숲의 비약',1,'고다마의 축복 확률','목수',[['참나무 심재',1],['강화된 레드스톤',1],['뼛가루',8]]],
+['화덕의 비약',1,'요리시간 감소','요리사',[['자작나무 심재',1],['강화된 석탄',1],['설탕',8]]],
+['흐름의 비약',10,'마나회복속도','마나회복',[['정글나무 심재',3],['순수한 다이아몬드',1],['발광 열매',8]]],
+['파도의 비약',10,'트리톤의 축복 확률','어부',[['아카시아나무 심재',3],['순수한 청금석',1],['말린 켈프',16]]],
+['나이테의 비약',10,'희귀 심재 확률','목수',[['짙은 참나무 심재',3],['순수한 구리',1],['뼛가루',6]]],
+['볼칸의 비약',10,'볼칸의 축복 확률','광부',[['짙은 참나무 심재',3],['순수한 레드스톤',1],['발광 열매',4]]],
+['담금질의 비약',10,'순수한 광물 확률','광부',[['아카시아나무 심재',3],['순수한 석탄',1],['코코아 콩',12]]],
+['미식의 비약',10,'요리 재료 손질 방지','요리사',[['정글나무 심재',3],['순수한 석탄',1],['코코아 콩',8]]],
+['결실의 비약',20,'희귀작물 확률','농부',[['벚나무 심재',3],['순수한 구리',1],['뼛가루',2]]],
+['제련의 비약',20,'추가 채굴 확률','광부',[['맹그로브나무 심재',3],['순수한 레드스톤',1],['발광 열매',6]]],
+['지혜의 비약',20,'숙련도 경험치','공용',[['창백한 참나무 심재',3],['순수한 다이아몬드',1],['설탕',16]]],
+['토트의 비약',20,'희귀 비약 확률','연금술사',[['맹그로브나무 심재',3],['순수한 석탄',1],['꿀이 든 병',1]]]
+];
+const IMG=["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACVklEQVR42p2UX0jTURTHP3dzzun808bWphCWoDH6twVpRqFFL0pE4dKI8sEokgjqJYJMIhGCUKJeKgqC6qWgMIKgoIJCM8ci0EJHLXUpm/PPFOdc2+1B+MXSzfD7dM8953wv53y/XCEj4yyFgD8oj9adUOKGk8dw1u4XS9UKrQGRjKjOeVqeP5ClxHdfDHHz4aOkRGmkwOMOl3L2+tSpSpMT1Tir8ESqKbMXMTUdJrenNyWRKinRoSrh6+xmg9GKJa7GVrh6ZUQA8VgcpEDGgbhcOdFoaIaOLwO8GxhkOSSoNjw0Ik2WPNHa/kCO/ApQvKtSyX372E0sTYNjrZmNRQVUVG4XSeVva7sl87eWMhwMJ305PBum8+Ur6qvLqT28TyTIH/CPycbGi1w/c5yQ6ztblhnD/7WXe9MhitcXSbvdJpTRrl29LU+dqxH9LR0y6PnB/+BOYBBPYAyX+7kQWgOqEZ9fGi16/Pd7FpEIdRxNVpQ03W8A0nP0mO02AMqlmsJtpTQ3tUvFkLGIapF+Rtskam0cqyOX4a5pNLoYoz3gd/cld3Y8KkCbmAj25S3sww0Zq3RkGOZT+8haYBahmSmyq8rRGRaaMy0mNPpM0nPmMW2eIHvNLHPj6QmNP3Nz8HZ/5PKVs3+XHYlE2FNxRDp37ET96TNCrQIpkSnc7NpUQuuFBqz5JqHIr9Vqed/5RDQ3tcuJWITsKDhKHaTrMxOa+9924Y1GMOwto353GdZ8k1jS2QCeAa/88KaLp89ec9BoVu7dc7P4piZpuXGJ4pJ14t//6A82G+RbJh0eawAAAABJRU5ErkJggg==", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACdElEQVR42tVUXUiTURh+zmeyidqaOo3IVRMyhImzEM0iw2S0i/5cEAT9GN35gxfRlZpJdBGRiCB1IQ5JQsuIQIhKVw1byQwtW5oNW23LT7c5923flG2ni+VsulZ61wMHXs55eM7Lec7zEvwCXXAgGhrqbtGl+vgJJfIUOWQlhwhSAAAMYuDUyUpKKndjadXf1cSiYwP+Asur7+HaO+2JyY3Z2b2eVpLw0ohLpUoc2boLNepj6xdbK/5jMcusF9qhrxg12tYv9sM2Q+vqb9AitRrz3AIEohR0PXkD/eAwXbNYh6YbuYdKI/Zyigpxra0Hz57q6D/9M6fTRWuqG1Bxuwqd9vfgpYsR59MmN5paOyGVbqE7s2URaSAr49TS0k63nynEY24S0kQJ/EE/rLwTAiYe25Ik8PI8+jSPIHobQG3FURxWlZCocVLkquieiwfRYX8HaWIaxubMKHDowfpc+OadhY41YsxjQf7pEoxnmHHzzgNw7uVUxC0VB4r301RZJhzZQkzydlh5B/w0AANJCpMlgo1IESbDscghGM8gYPbAabJdea7tb4x4M8PQBygvlKN90QCK0PvmiXcgKV4YFpuYt2KKY0PC+VmwvmBxv7tvtZt7i/PxUNOLtGACACBdKILbz+OTywIda4SONYL1uaCiy6NK4GZw7rw6ugGc24Oqq210vJBHAAEwhGCzJAMFckWo+4+jmLGZ4QWD8rgyJJq/oKr6bNiAVW5qB17TgX49ep0jWEim2CeTh2/+PGcFOzyFgiw5ZGQTGptqye/Dkfxp0k6Mm+jl680IigVgyjIBuw8zXSNob26CJD0VYrGIrJy0PwEnWvr9dShGNwAAAABJRU5ErkJggg==", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACWElEQVR42p2UX0jTURTHP3dOf8qm2WQ6nQ9NyUoyMgn/QOZ8EZSIQpsV/Yci8aV8iCCRCIQoFCGQil6iojAriiAqoZc0RdGwLPMvOJttKjada+l2ewgmSzfD83QP95zP4dzvlyukZ5qVwmGfkkfKT/vzU2eOUmbZK1aqFYoOEQxUXlYpL+zT+PM7L8e4cf9BUJCaENH0vMt/Hh0PC1UaHFRaVsygp4SczFR+zrpZ1/k5JEgVFHSgWPS3dhARm4BnUUX6hoS1gQC8Xi9eKfD6JPjk2kHOWRe9n4YYHLKyWgSoZh2zSb0hVtTW35O27w7S8s3+u6/tHXjV4ewwxZORaqTAnCuCyl9Xd1MmZWVjnXIHneyed9P26g3HSvKwHNwjAuR32CdlRcUlSqpqeda76hb0jrTQ+PAtaZtTZWZmuvCvdv3qLXn2fKmwNLikbewH/xO+gSZUtj66ul8IoehQ2cbtMs6gpfJR5DKIologPsqJTpkDIDZaIWe7AYD5qC0kZ+dRU10v/Yac+SVAEzhxv6kLbbiHoq0umnt0xCkubn/J50PPRHBnz/1eDnoykgXA3W9ginaQEuMI7aNEY7yImndycvci2pi/NGOClmhNBMmaaQ5tbCfXMMywUx/QqIt0Ym1v5fKVc0uP7fF4MBcclsbC43R/nEQdpsLnk/hkcDfnmOxcu3iCxCS98MuvKAqtbY9FTXW97HfP4EHDtp0ZaDQRAc3v3w+hdlux5K/HXLiLxCS9WNHZAIMDo7LlXSfNT1+zkFy0pKCzj4WZCRobqkjblCL+/Y/+AJr75OnXcj/CAAAAAElFTkSuQmCC", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACYklEQVR42o2UW0iUURSFvzOOTjreUDRnjCANjW40Smg9iEMvqYQImkY3KiuSLhhkL4qYICmiD9aDQj1VBGpEF5Iigi4OWqaRgpKVMKN/zailluPIzJzefrHmN/fT2ex9Fnvttc4R0jNNoHA5p+ThklNqfuL0EYqK80WgXmGIQWgBlRSdlZcLjGp+47Gda7fvaALpWSHaH/Sp57HxoIA91VXNEhCaQIVFuYx68si0JDMz5ybq3ZBas2zPlesKwlCeuGmsr+RKA+g0gfbnipHuXkKi1+Lx6nj/9C7V5aUS4NWbduF4NI9vQZJt3SWAlan5fD58UuDzSw6Vnsdq3cnNlgYJUFdbQU5utrqzFYFm537zcfAzU4rCjtgQwiOjxPFzFQF7l6nmsCsyLiFa1DXfksqEi5Qsq1ob7unFpw8mbUM825ITVUoB5W9qapXm9AwcU27NKd3zbmxdzziat5viA/vEMvldzklZVlbJhZYshn60ERGnTTcCUGxfaO2cJWVTsrRYNguVWmN9mzxzsVBcH7gkv36fZTUxcC+SxX4nff0PhTDEoFfGnTI2IZz79pr/gkQIPXPSC0DMFhfBazJUQ+oAfi6IVU2RFGTUrOkAfi1qA+2dWPLsB++MNpApMV6Ezs+yPriWaKPhn4Yusz+wb6ZN2G091NSWLy3b4/FgzT4oU4+lMzJpWxXNjc5M6itOYjLHCVV+g8FAt61DVFc1y2ElCK/Ry1ZLGmGG8GWX3w6/xO+Q5Jn3YM3PxGSOEwGdDTD6aUy+eN1NR+dzwnJCl97doB/PtzlartaQkpok/v6P/gCux+2dxyLr8AAAAABJRU5ErkJggg==", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACeElEQVR42pVUXUiTYRR+Xjc/nXNQ+ZNziSudhlrNollQ4oSgkAorSwjLCgylG72osMRFICWRF0VE4VU/hCLSwguVvLAkNcbMEgxTZmqfbWpr/vWp304X5WdfbqPO1Xuec87DOe95OIyEKfgyl3OSCvKLJP/c+VPIO3GY+cplIevA/BHl512gS7lqya9tGsHdJ0/9EikRwOqtNuntGFMESvVPdCDHjHHlQRhT4zE9M4/Q7t6AREH+AqcLj7L+jk5oorTwQon0pA0osxRQe2cz/RcRAIiiCJEYRC8BXsJtyyOmCg1D8eUj9M+jAYBnehbvPwxikudhjOAAADuNe5l2fRy1tj+nfZkrW5RtbXSEp6iYNayq5jHxX1xIyjRLsf6ubojKYGzfGI0tCTp8XxiCPs6AbSkmtmprdfVWxO7IIE1iGjSJ8u42Z5gAAO65eVTXWnFoTzJSDGr5aC7nBJWUXMXZOxZ0TS0CkQEXhI+v7HjW+g4Zv8ml0W7dfEDFZcfYlR43DThnZUUJDhGD+tUa4usawXrfwmZ/8Ws0fsxJETHhuP9ZkJFoOAW8RBjU++5KkZaKWDWHyooaAsCUAOD+IVd+jmEtPIKIIAaEcwo0DXyT8D7XHBxuwbeyZxYYwv4AlwuXrSo7HgBQ3jbsX9laXTRTzXlg4tSIDOd8JpW3DeNhy1cZpppwYvRNB65dL2XSZwuCAHPWSYorLELPhMcnWTAxLLIVQZtcQ6i+eAba2Ci26oxUVtRQIz8PIUyDrelpUIfIO+zod0A5OozjOhXM2buQZd7N/N6jTwMOevnahoaGZiztz5Vwrs+OpXEe926UIil5E/v7Hv0EQ7Dydl0sVbwAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACVklEQVR42pWUXUiTYRTH/8/Uvc25d5tD3YxGlNQwL9LA7UJCg4KMiGAroY+bwnJ0U4HeKEuCQLIG4UUUXgQ1IkVS6SpMCtIyNbQPsilb+PHilqvNcnuH704XwVurba3/1TkP5/w45znneRiJIaRSMLBCJxoaZf/UmZNwHD3EUsUyrhAsHajBcY5aDqtlv/vRPLruedKCcpFBPQMTsu1fzMkUmh5kd9RjVjwAW+VWhFej0I6/ywhSpAUdqWczI2NQ6kogritQvrkEt1ua6L9BACBJEiRikBIEJAjHWzvY4M1rNP30MS3NzVBWrQFAZPU73rydw4ogYKdBCZWGx8GzF1lt9X7K53Xg9Qa639PF/gItzAtUZNSxK+67JCwFUeOwYy0ag0qnR//IGPrGPlJFsRrmfA7NNRo09vtSV/SgZwClu6ykKauApiy5Oou1+meVoRCiEmH4fRiiRMmgYOAzOZ2tcF7ai2mfB3l56dstLAFmjRLmfFF03+n8tUskhtDZcYuaLtiZ+2E7LYTCyEZTQ7mIe5cx8XqQMa4QCmExQAZjATxPrv8TYsqpkm29OYxNNitcbW6Sx/81lnLzwW/QQ63kZV+QJjNv9rc4Q0Gq8ce+IFspTBuLmWotAkt5M3gVl3UiE4sx/+Il2i+fZ/Jli6KIutpjtMNhhffTq6xAZlSio+U0TKVFTH79HMdhZLSXudrc9GGZICkTqKiqgkqlTkqenHqO9eA69ll2o26PDabSIpY0/t816/XT8LNR9PYNQWvTyudxfxyxYAQ3rrqwbfsW9ud/9ANlO+XI0rLCdwAAAABJRU5ErkJggg==", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACdklEQVR42q2US2gTURSG/ztNmjZpaiepbezbhY8uRO0qdqMRAyII4sKVW8WNRTHoQmtdtCKoVNyISFEX0ZUFi1qoxShYa9uIjfSVpgYlE5MmaTKJeb+ui5LH2OYheOByz5m58zHnvz+HAACNefGvcWd4kupOHiCZmkgU63spoMPuopm8jpWTamk1DKYfVLO3g+SfKwv49MkLmnBOZuswo0LPZR3hPAFqsXuRD80AmWJtjb42oJm6s8s0MQEA+BuWH6JSWhmTO7O5J20BgIKwki2HQ2Hc07+i505rYHN44eBCOHqwa1NYWS1LZVIsGecwvybBAhdDgi/tBgb/OQpquLC4TEPBCBiZHFMz8wj6fNga92Nqdok2K7egpXUbKUvD8bcfaZd6Fx4OGxEJR1HbqMq+83s8oIRBOhiAe86ER0O3iht72WylHwxjkLa2I55MF21tbGQCO1oacaPvPGEYZiNw9M17Gozy0MqNiH83l9TK9JXHY1c7tnfuxsBNHRHcciqVwuLiCo5p9yBpX0F8NbRxuSNIeGPZurNJjAYmgvF3n8HzASq4ZZdzjbL1UpAvtxH9GdjcDpWVqKipETw7UreKtv37MHh3aKNtuMDmDur/tL6no1EkfXx5PpTXyogoGcMvVgsxWyU4cK1b+MFLSy43R+TwcXZoDquFwBq5DOJ4DA6FFgk+WvQPtB25XNakgo/jcEiTNxfzbdPXO0hDNivUvm+oIMVbm/0tQqj7BPqvniVVVZLC83DZbKVXzujQhgCOX7qIioZmAcg2cAHPnBLc1z+AUslCWc+SsgbszLSJPteP4JQqJ8G0Xwy/VIHe6z2k0LT5A8zuHfIYClnUAAAAAElFTkSuQmCC", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACeElEQVR42tWUW0jTURzHP/8Zm5apU5siuKzUSMoypLwgCYaSBGVomNBFn03xwacy0+ghIiQpJImyh6TUHiIoytSRzQtd8RJqXvHKappuc1vbOL3oaqaSvvV9+p3z+57v4fy+5/eTWICwTrMciovKxGKcdiKFfVER0lKOpPAFYAOrIDMjV/hklznXheU3qb8fsSJ/VTEAS4fWGTumdatyZaslH9XekrwmGsjPjiIl1peCnOT1i60V/7HY+Pd52j8P0D8wtn6xqclvoujSdRGbno7RZMXDR0n1y3baWj6KNYtVPagh8nCSy15EbAxXK2p5Xf9W/NM/m5mZFfl5xZwsvUbFK4HZ7HDJ6+Y6KS2rRq0OEuE7t7t0g7S0ncrL7wll0ilqWmWoQzyw2QST4xYUChnqbRsxG800360iiG4Kco5xJDVRWmwnl2dGRaaKXcezqHhmJzjEg+4OA8lSDbopK6MjZrQaPd1dFkKPnqFjQMGNyicYDSbnebfF4FB8gtgUHMKYIoK+ETsTYxbsNkHLRKiT7K+S4+cvZ0b/E7uQ4zY/yuzkyOUGTWOJS80+vOsiMSuT21oZYqG8e6O98fT8XdavPUaGB+YB8Ao7gKWlmbqa53+7GRe/nxcP61C52wBQBSowztnp/WJAq9Gj1ejRTVnJCH/vPOzhZuZcdvryBhgNJnKLK8Un/W7sDpDJwH9rAHuSogDo1nQyOzSIySbndJo3myd7OJ931mnAX25qmlpFU2Mbj9/8YN7hTtxBtfPm/uE5poe6iIneQViARMmVAunP4SitNGn7egdF4YU72ORe2AITkFlnMHQ9paryIltUfiiV3tLSSfsLkdT5mNP+ZGQAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACY0lEQVR42tWUXUjTYRSHn/+c31puoaDiMg0FqZERLDWxUIwkjcJKojBHd+Ui66owP0AIIowRGAaRkBGZgRBEWCGW5kQkFMbSKS20ldqm23QfpP8ubMZ0TfSu3817znvOeeBwzvsK/JHotuBPNdWNotc+fuIwezIzhNU5Qqh8+QwEKzt5SRTOqld884t2uloa/gmTso6k+rG/RbP2gLmSQMGnbfcEmXmIKnUhRdnpVKlLNg/bqP5j2OTMArpPYxjHJjYP+26eFqtv3hazSktxzLsJj5Hx5LWOvt5BccOwRy3PUBbk+9xlZO2noamNN50f/ALX7JnVOide1tRQUnuVxk4DTqfHJ+5yCNTfbUWhSBDT0lN8FnjNC9BqH4qhh/J4/PELAIrYaPKVSVjsLjr6x1l0e7C+7yNpycYV9TGOFB0UvC/Ap81MZZGYUlKI9uUQNqudc1k7yIiN5H7HALphE9eLd2OZW0BUKhk22bjT3I7DPr9SH+Q18nJyxcikZIwhURi+Wji6L5m2HiMDxil2KeTsjI9BN/KDmRkniZIo5qRLhC04mDVP1r7telfn0+bt+lui6kwZDd3DVBWkoXnQve4qROh6ESZGGNT3CD5tZufs5VXrcxIjQn1ALsMoLsOoj//LYgUgXFjkfEWp/wE47PNcrGkSddMSnFYrnp9ThCVsX4Z8MwEs+5IgLpw6wBazkUpNuf8BREVHUlGcw+lkgRDbNNLgYFSpclSpcvJyM0lIjEcw6VHFuPEM9VOpKQ+8Gl6NfB4Xr93Q4gkOxxWXisTjxKnvp6W5jti4bchkW4XVn+NvwWTsHRp7HNsAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACeElEQVR42tWUS0jUURSHv7+OjWPlY8oczEyEzIwsXZSPhYJC6SYTA9tkCkGLMoUWRZhERUVFYkokFBUkoQa1SBFFDcTUSnpY4LNMHVP/zmjOe5xuC1MYRy3d9dvcc++5fPfce885En8krDoWU2HBbTFnH0rfz56oCGnhHkmpnh2Xg2UePikK0hzz83svZYrLK5eEKfiLqgfD5u0hk33ZvW7LOZ9WlkiDWh3J2TkExSaRnZ25ethK9R/DhmUTbe/76O0bWj3sx8i4KLhwQ8RmZGAwWlH5+lFe20ZrS4dYMezhowoik5Oc1iJiY7hyt5L6uuZFgS55ptdPidO5hdw8l0BPfREbrQ4n/5hxiqtFMsHBgSJse6hTArtUQHHxA5EeIyF3tuCrVmEx29HLJgB81CrGRo28aDfzeWYL+TkHSUlNlOYqwOmaUZGp4sgBDV/qarGY7fR3y/R2yQxrDdx/PkBd0xABmrWk7FKg1r7lVtkzDNNG1zdrbGgR6cePMtn3ASEEKi8PbFYHWtlK51cDeSdiGZ+0of0+hY+fir07vPHCzJ2Sx8IF9u5NJ4lpqUwP9yIEmAw2lJ4KGjr0hGhUfGzvQqNWEhyqRj9hIiJkHUpho6qi2jWyuPhoap5UYfGeLWyLZYb13krOZG3D6gCdYYaYaH90sgn3zTsBMEtKjmVnLP4BhmkjeYWlIlzXAnYLAO7ubsTFB+Lh4carpiEcjl+zUaSdxWNkgFO5WdKS/ayp8bVobGilr7kGT8lO0L6E+ZN/fuuip3+U8N2ReAVs5eKlfOmfmmN3V7+4fP4aijVuRGsE0zaJhk8TlJZdx3/TBvz8fKSFzfE39DAECznDMWEAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACYklEQVR42tWUS0jUURTGf/+/r3Q039nTJDDBSFRCfOADlMLZWGFghFSuWqShILQxk4gysUikQMJqkYQaSEUWmRVkZWJYKIOWUur4GKcx56EzzjC3hc3EqE3orm9zzz3n3O8+zneuxG8Ii47VUFlxTTjsQ4cPEJ8QKy3PkXxClkZ3ZAVHTovrSWrnvLbLypW2x38l8+QfaNVmOO1vln63ubK74P2WemlwQUdqWREhymwKTx1dP9la8R+TqbXzdPcN83V4fP1kU5MzouJcjUjJz8dosuAbFEzTs27ev/0o1kx2524zcTnZLr7YlGQu3myh4/mbVQlX6Gx2dk6cKankRnEC+tsVJM/bXeLmUQ+qr/4gMnKr2B2zy0XAKzqgrq5RFMbOYW7rcCYF5kTjFeGP8d13DCM6mib96JS2U1qUR64yS3J0gMs1E+KUoijdH33DU2bGbFgmbESU7Wfu9RTqmh7k0DAkkycFQk/U50/UNjzAaDA513s4jMy0dKHYEcU+XS/mwWlUC7DZCxBgGZ3FPm/FPDiDIn4Li2o9PjJ8kTcyPq05/+JVZ5XLyXp7+sk6qMQ2pAIB8X5Lfp+dQdi0887djd1jACSFeaCwWmltfrKymqlpibTfa0UfvhcA720bCcqNQXOrx6UAj37+eXODtzcnTuavXgCjwURpRb3I/NCFbFsEu0AsE8GCHXxl0JafRdaMUlxyXFr1C/IPUHAsL4OXAd5o2tpR2OyEZWc54xaVioEJDdGJe/Ac6KPqQql7aTgwNDgiLpVfZoMskykLdAIeanTUNVYTvimU4OBAafnn+AuUVOp9thi3qgAAAABJRU5ErkJggg==", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAACrklEQVR42q2UX0iTURjGf2dTp023Pm1UlIYaWUFYEESopRRFRXVRVhSRCtVF/wyEuukivCmRIPPKiy7sRuimIuumoMLSzGmtsiyzzTbT6fx06ebcN08XxlqpS6EHDrwczvvwnPd5zhH8ggwMMht8dKoy1ZIojIbY8J4wJIfrmGjN/W6P3LvnBMGghpQTnD1XzMqcHCLJ/oaIpvBQ4Wk5IoMMDQ2jaRo+9QfNrx+KGAQxQsxdIUD+4aJw3XjnLnHoGCdEDPppz+uikdXdrhbdTx6wJWc1S1KMFO3bit09LAN+bcYeHXPAB6fKMkuSMM8z/B/CVUsV9LroLXMinA2imtLSbJNevYnHz9sZUVUs48P/JJwxNi8aWuTAcD+fAvN/z9DahiXo5UrFRfEHSURspr1y52e7bHxlxa1fwISmhVdW9hre9HqpulErZ62w6UWrtLvspGdvwNEzhBYK/fn03r2n4VkjeavTuVx+XkRV+N3lli+trczPWMujhrfYu3swJRkxJRlxuvpwuvqINZo5uT6Zb6qX8vJqKaWc2eWdO4rYVbibVtsnDHGxKIqJNlsHbbYOFMWEopjIW66iLV5EadxLnlo7GB3xTe9y5dUaWVVfR+ObL4RCE/hDAfxjAbIWjjIW1OHo8wDQ26eQF/8FgKBesHnTIRk5uhlzqA648ftG0eskjsEEAJxdnf+MTZjwTOkxceFACTJ2UrRJScEQn0D790QALEnjbM9dRKIYJbXXRn3WcfTjGvfrb0Z3uezSDdne8RWD2YTfNzmffped9LRlrDMHyUxx02Q3E0jL5mBBNvkFG0Wky1MIPQOq9HhUjhwtw5KZydFTk99XnE7iaG7iVu09Sor3s31bLiuyMqbEJuoHW1lRIwe9PpJTUwmOjdHf1cW165fElDBHEP4ET+Ug2jZLc/cAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACgklEQVR42q2UW0iTYRjH/+8UP1JLZ0wtygpa0UJRCdJ1chUaKyRlUQRlUasuPFA30UXuQjLopjBjSAfsHCrWTUpo00BaZxeaZnkosVSmW9tc7vg9XcQ+HX4ulB54eZ/vfR9+PB////swACC3BWKhO3+ZAnlefg5S0xRMrI5xcX/32WAH9hVScaZV+L7b5oS+/klIWDhCRKMjTciHvF34V0hmu3hUW8ls4zbkn9JCkZWNE8cPzh82n5gT7NVNLY10NtN/gWUcu87CuEh8NVTRQNs9mhPsx9hvvDb1obdvSDiTyZVMvv0ke1j7HH7vZFC9qJojw2a6pq9GpkaDCacbC2KlePDMAJksjjKU6ay1xUg++y/kqvJogypHsJhoZ9W3a5Cyc0fQmSIzAxf0tWhuaqPTJWWIj/RDLvXM3pnVaqOSYh3KizbiTX0Zlrh9QcVfxv0ovzIGALBN8nB6JVibKJsy7/QXUFFxi3YrXOgwNAEAVictAgD0DtoBAG4voaEHGI5YhYn+bpw5WwjN/j0s8AKE30xLUZNmixQvHj+F309YlhgFo8kMo8kMs8UNs8UNu8ODzUs9oG/vEJkkxy61is1Qs8XwkvK1hzHy6QN4nmCxedDeZUH3qLjKqcs5hPOTuFp5h2bA3r/tRNZeNcYHPoOmXa9LEIetSYhAGO9BXU3DTJ8pN6Wj8X4dvDJFSNN+/DmV+yQcjhzVBE+PgAATDidKSispeqAVvMcVErqioBTc6CCKigvY9BEkCBC9MAqHcrciNjkb/VYJvlt5cOu3CcvOxaNjlIESk+HoNAkg0c6C/NTTT7pzF8HCJVgZ44XLx9Dea0PVjUuQxS+GVBrDxIbjHzkQ/N+gtwnBAAAAAElFTkSuQmCC", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACe0lEQVR42p2UXUjTURjGf/8pOXNiWJpoYCtNTTNRLAIrK8ogkkxINDSz1AIhEEMjFPq4kOgm6E6ikghT66ZYRmaCSn7glY7l0rnh1KZpui8/t9PVjOlU8IFzc96X33nged8DgFiY9ng+1deJc0ePi5tZOcL+d9Rjj0uSC7Rar1+9FyN6NeeDDUwtymm3xPGo8ra0uk/yCQRAxjq6lp8paX70MDUxy5h+nCPxkWwk7/UKjfUqUVF6Ge3vGTCO4CNmNwSt66ixQUWLbT9G/yTMMZeo+dC9NVBdw3Opt6mZxOQEgnfuIC/z7NZAAGaLjb7+IQaHjGymNam1t/WILlUtmmlfotMyVu5/dnUjn+xnjzKGispSaXVqbqDmr+1irr+O8fB0zPivedW5vIShuYFFhx81L6oljyDtgE401T7m9I0AzDYLQcFBABiGDdjtdgAi5sNo1P5i+NsC4YcvUPWwTPLy3fU//s+qVjHZ85bULD90hmFiDsa4OYmNSGPU1McgoyTEb8dXLqPzo4qq+0K4zMgA1H1aTsQpmPNeRLlPuQLYJgskKTob9eAXwnYfIjkuC4CoA3K85A6aVK3uqZ06c4ynbwYRJid6nX6lODVjQD/WS9TeVAIUIfT0vwOgo9PKstWbkjvXPadWkpEuSp5FY/pjIjQsFIvZgnHEPfqOTisz7ctEnsyhrLxI8rhrxQ+e8PKeDiYEGrUG27D7WljNDrTfHSReLKSsvEjacI6sVht3c7OFMsWOTeZwA422SKRk3CK/4Iq06fYrFH4UV1WzOBCCYsEbh0OwNC/Qt0nEpua4QTZ05JJBbxSFeUUsSE6EE/LzcikovLruf/QPvuMs4hwbrnUAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACjUlEQVR42p2UXUjTURjGf2db2nTmZ2kKSqk3UhKoQfSFaHQRQSQZarUoMEVUkCSIEtOburAiQ4QyEm/yI4mCqZRRaV8aaFr5bX7rrDmnTp26/bsYGqKb4HNz4JyX33k4z/seASCZJlhPr16+le7df0KAvy8FBbeE0km5pkY4elhXW6Dip8+l70MT7ArwZW7OxLRWS+7NZGELJMOG1BdjRGvdZ3p7B+hq62R/aDD2pLB1UFGmka5np9M1OolhaBAUCrsgm44qyjU0a+cwyhxR+AdRXFqzOdCz8oeiSaMhPCwEH3cn1DFRmwMBTE0baf3RQ3fPEBtpTWr1dY1S9YcmBoe17I2OXtlv/9qAdmSEiGA/srLShN3437yul7pH9Sy6e2NaNK+51by0xJfqGrzEEo+Kbot1QZ0dvVJp6Qsyg5pY1E7hslsFgOG3GYtChepIGLqiSj4OyHmgc+PQ4XByczOEXOn1P/4qzTuppXuYpMABJhvG8IncYbXg7IrcT4lFa0BXVAnAQX8zzg567tZ+4obFIi2bkQH8bO1kT1goTvp+PCOsVvNLjEgyBxbHDZi6+gH4M2/l7/OxoJKgSvN+dWqRUQcozCukQ/ig+2Z9r9TzzpinZ1F4uq0UJzUoaJkUVHfL0QtBapp6/dROnk6Rys5Ns9ChxzVkG7jvZKJxnIWBUfLa5LwZs3bLFi93Yo8f5eq1RLFuaq0t7VLOncdkhhrwH+lja0gg8796Vm79axKkNKuIV8dwJTlB2J3+mRkj8QkZ0hmhQ2k0rIo/3+yBOiGGS5djxYbTr1I5k5OdTq13CBMu2zFbBDNmGSXzLpw6cWwVxG5nL6u/b0hSx6XjOD/LEnA2+QKJiXE2/6N/oD4Qx45QfFcAAAAASUVORK5CYII=", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACo0lEQVR42oWUbUjTURTGn7umw7VwGvQiNjFcWNSaBaYwiNIKDBUytYJUkmYh1ofMIlAWURBZ9mlJUDroSzknFkhhhuRyYS9a8yVfWlP/bk1yzf3dq9tuH4KJ7MXz9dzzu+c+5zmXAAD1WBEuXr18R5sePkWKKAlK5U0Sx48Le47wEkEigVSt7fQbY0VqShJcLg9YiwW36i+SSCAOIkR5RRHR9+lgMMxgcmwCmRIxogU3UkL9ooveUFzGpNmGRWYW4HKjgiJ2pG7rwpDFBQeHB64oDarnb9CqqKKjH3to2OdFE7tM3kDP19eCMRghsM0jvzCXTA3pqLLxAZJ3SCDem41toiRkZMlI1H7trAP64Z9YMJsh3RgLAPgwZELV1SoAgGnGiA6NPrxG2r5P9PX7QczOWSArPgmny404YQI6+wfwWN1NGf0IBnX3AAA8wqJ3gA0Fve3W0inzX2yWSCHc6V91QfqBTIh9PvT7/dGnNjFuoL1fRpFeUYQF9zK2x/83n8nuxrTdvSKqJxeSww1oun4En3v6gPh9K2J3dWjo96k5bC3IwTDrQVayMFgoTRCQR3pm1aRmfvzC2JNnWGcyoUXViIwsGeEAwIh+Arv3S8ByONizaUOwwB+gCIQZtig9FQGhECAE0oxdJOijQznZaL7fDC9jxvA8GyxY9PjAen0hKL32K7hWK2oulYf3Uf6JanpWqYDR4UNaIh9W1zLGFxwhEGubGiXHDqL2mpyE3bU7ihq0XbmL5TkzdIwNf5zeYE4cz4fLZsdvTScqi/OCkIjOXlpyoLSsjvoLCuGM5a3qxqtqgbwkD+cqS8ia2y8QrMft+mps0WnBX2LhDwTgcznh1rSj9KgsBLLmrk0bGXqqvA6emBjA58eFM8chl5+O+B/9AynYJUdzjPMVAAAAAElFTkSuQmCC", "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAACzUlEQVR42qWUW0jTURzHP2ea25x/dbqEUGdqF5Gh3bxkBhZZZBTkm9jFekrsakX0IFZCEBpCPUT1VBjS7UlIKALtAt0k8VJqadMsu03TtblNt9NTtlC3Vd+nw++c8z3f3/d3fj+BF6RzGF/oNw/KhPlxYqY9oY6aWgcTACoraiVAU9MT8vKy5cmqQ8LXeb+kX79Y5IcvI0iPm+aH10UgIvyS7iurJGfDWlalLyRQiEA83V5yTI7bx7l149ysSr09VQXycm5WGvlrsli3tlhevHBN/nf6u0uOyl3lpQAcWbKExtsN/+9pRkY6jc0tLEozYf9hR6MNpbGlV+p1ahRtCFqtmsSYiD9s8Zt+adk2MdjeTnJSLPowNbkrUtm4PFmYEmJETKSOtx+GEX+jtLWtSzrsDlQ6hafPO/kxMsJc1yjNj17I5IRY4uLniehwjXROuAlI6f69J+SzniEaWvowrc4FIEyv51NQGLcfdVJ24BQAtvEJQoJV/r/U5cvXZXSSidcfR1Gr5wDgcLhwuz2o1XNwOifoePqYRUtTObg1h7kxBuH9paaRVlbUSkNiOt1vQogy6AkP1wHwqr2XsTEbihKK1WrHbrMw0H+XlEQDdVdqhDZi3szp15y5JPMKN2N+rzBssU4RxsWFY0zQA2C12gEI1UWTklpEt/kbK7MKpU9POzq6AYiMUqZikZEajMbof2/TpWkFctOOvbx57SEj2wTAsGWUnq7+aZfbWutRtC6a714ViiF+dqUv2+4I9/cuFixWMTjwmcGBz9MbItOI+d09FI2T89XHCVN0/qvvcrlYn79TLs4swPI1ApVK4PH8tm1y0sZAzw0e3K8Tvwh9Vt8bBw+fln1DQQx99HhFbWiCzFRXlZOds0zMNKV8ko6NWuWe0komQ+N599YBOPGMd3Kz/ixJSUYx2+gLaJ6WH6iayr2oeAsZmenC1zz9Cfm5DzNFsEdwAAAAAElFTkSuQmCC"];
+const MI={"참나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADX0lEQVR42oWU3WtbZRzHP885JzlJzslJmiZL3drSVjZ1bdUVUStWsN1EvJlX+zfEi84L73xBRC+GeOcLiFfCQJgIw5dtbHNs1FJmq0PXlRpnkzZtkybN63nO83iRrTai+Lv9wuf5fX9fvo/QrW32z0a+oJVWvHH6Fe7mcl1azHY589nnKKU42N8v9mtiP+iD997V5788y9T4IBOjw+jA39N8pWk2Jcu5db6f/43jJ0/x6uyssCORbtDRkWE99WCGUy9OEgSSO7kCjz99rGujmzduMvbYQ6h6g0sXr3N2Mc9PyytiD/T+W2/rwtx5ZqaO4bd9fK2wHQclJbrdRoVCBFISDoWplMpEHYfedJIfvr3Kop/kw48+wcivrekbl77m5MvTmGELN2pzIJthu7iJZ1kYSmLKNpmEh6xVOHx4hLVcHksYPPfSNLJSYHOziKGVQkqfdqMBWlNvtTFME92WLK/+SaAMDDtGYauE6XpUG016Ei7CEJQ3NqnV2wAY9/1f+e4aiXSaiB0ml1ujf2SQbCZJs1lnd6uIF3dIJhPkV3OMToxhIvjx2gINKQGw7oN+3ZFYX13gyMSjDPRlKFV2QQucmAumwXp+i0ipyuBQPz8v/8Gt+UXmCzX6IlY3KJWI4rgxzn1znWwqjhkOc3xydC+xg16chblF5m7lWNuq4JqKlGsj7+l7oHDYwrIsfFMzlHLIF4p8ce5yRzRMalLSS0DdDDMQCtgJBBoB6G7QTqUBSReASssncBzGkwLtt7HiCe4WtrldbZAwFAjYkRovblOuNbuP3Wh1lnx2+AH8ahWrWkVYFoHqvJj1bExAmCa+hoaCUMjcs27wHxP34hhWiJ1GpyaVeouhkCZuanLKQAaKzVLt/0GOG2Mp311oyxAoAa1dSTblsF6u/w2Kex79I0cAKDXbBFoTxGIAuKJja7fls1GpowAjFAKgx9DEo2ES6QHS6Uyna61mkxOTT+hD6ThPjWTZarRIIblTbtNjBERsi6u/lxlL2UjPI79RAUPwy2qRuaUlYUeindTsSITLC0viysUL+p3XX+NQKorphu4FC7bnYVFh3dc0ixXGn5zmmZnnmTnxgvjX/whgZfm2VkHAm6dnya2s4CsJpsFu06ev9wBnPv2Yhx85Kv55078AcXB/LpHtUsgAAAAASUVORK5CYII=", "강화된 다이아몬드": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAC00lEQVR42r2USWgTURjHfzNJpqZJ2qTVWKyiCK2KWsQFXFFBcTtYxQUFF+qCIhVFwYOIih7Ei4qoCB4UFMR6EA/qyUsriqLWvYlL0xhr0iVNk8kySTrPQ3AkbSKe/OAdvnnf+823vP+ThBbmX6y7q1eMcFdKf4sxF/p48cJ1oaXShl+3eilnL99iebVbHD6yuyhQGpzZ1Su3BEsXUGK3MbPKhUMx8zoUIaJlePziA++OnsmLb37ShN1hkwrCTly4LuZtW4OlRKEzliSti7x9bzDCuy9+APTOIMukDPsbt0oA8uBUg+kMP1JZfP2JPFDQH6C15RkhVcNdNTK3pk3lxs17RowB+/DeI2asaxSzt6wt2I+mS9ew1kwy/Fp3GbIs4z6wl+PHzgkDtmPPMfFUNrPp9KGik1qyvp62l61/yu2KAjBqTDXNaooOX0CYAV61fuTNwyesWjQLkywTjSfRdR2AR0/fGoDYZw9zaicO+VFZbQ0tz9/kroaezZL49oU73ztw2KxIVdUgDWknjpoJeX5fuI9IuI9EMs7Z87cxibQivHWT0Xq7yahRNC2N2V6GSVEKlhvuCROPRvF5PtPl9RD2tJHs6cYc6s31TG3/mhu1ppFVY8S+eov2LpvNEvR4iHrbiHe0I3QdORZn366NOZhksQBgKStH1zSEEKh+X0HYgKaR/NmJnsmgaxoIgZxKs3j+LOQVKxZi60/mnxCiuACFzoAaY0CNYSq1IZlMKE5X7p7Nnjtdot1PyfARACiVw5FkmXRfmGwyMYTV7/mExVWBxVWByWrFOaWO+jFV1E4YnxvZg6ZLSC3PUQIhlEAIdB37uPGYraWUO8sNULo/kge2Wx1skQc4eergH20KIYirCaO25SsbiCdTuUy3bzYOq34fpeUuMnfvA9DQsMHQZUGhD7bfUmlWUyywD8PpdHDw0E7pn56gYtbhC4ix40ZL/C/7BcO/Om5VopVtAAAAAElFTkSuQmCC", "자작나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADU0lEQVR42m2Uz4sbZRjHPzOZyUwyM5lkNsluNl1EupbdErtgCxYqiiCoUIRSipd6EP8Ib149ePWsB49SLCItUgpFPBShWOpa2qXrrvsryWazk8n8SHaSmdfD0s1GfeC9fJ/n/TzP8/K8jySODnlpQb8vhBDcv3MLz53oAFld5+r1TwCwbFs67ZM0B+kl6MG9u6LX3KBScXCMLIo8FcsIBdcP2W93KNUXeevd9yRFUU9AMsCXX3wu5LDNmxcb1MsF4sDDLlenThr1eO3VBa5cfgNbDvnm66/EVFX3f/hW5Amp1+cYDUKEOPaLZEw6OiJNU8ioqJrOURSi5Q3yOR3fD1g7SLh67YYkaQ5y4reYd3KMBiE500JRVQK3i+mUSZFIhYRpmUSeS3GmzG67i6zlscsVzLRPe3dbAMh+GCFLEkIIhmFIRlHRdI3u3g66WSBvF+n3PHKWzUjI2HYBSZJIRzHtThchUgDknFHg8fOd4z6TId7BPpZTpVByII4gjrCKRXKFEp3mLrXaHAC//PaEQRSdvJGiaSqNlSX+WF1jxlIpz9aIAg9ZMyBrAXDQ7ZHJBFRnZ9lrdXj6bJ35aonm8BQoGo4AeL1xjp7n8/DRKqaRY+mcdRJULjus/93kxVYbU1eZqxSRZZkwHExAre1N/MUFLNOgaFu8feUSAE+evpiaI03XaZxfptvaQkljxgIMIzcBVWaKBEGEZRoAuG4Pz4/IaVnGoxHLS2cJw4h4NCaMAoJ+yF8bG1w4vziVSNF1ndpc5UQolYqUSkX2mvvIahEAw8jTWt8gSVLylknjQoOpaQQUL4r5t/l+QMEyprTZWp3Q9xj0XQSgZ6bvyOXyDA8frRKcAlqWiWkamKfbbW7iuj20zASSVyZ1KULRuXzxLJsbW7iaxnB4RLVSQcsq6JpKMh6jkFAoOcSux4EXIGcyOGaWjOFgl2aOK3rng2vSd9/fwYuG1KplFqoF3O4BuqbS7R7S2t6k57r8+vsagzgho+kcej637z7g/Y8/k3KGKQGTNbL27E/x84+3WDm3wHz9DMk4xjRNxolgr9VBI2ZnZ4fHz7e4cfNTllcuSf+7jwA67ZYQIuXeT7cJ+i4A4+T4L+VNiw8/ug4iZe7MK/9ZbP8AjEZpb5X5a1gAAAAASUVORK5CYII=", "강화된 구리": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACzElEQVR42r2Uy2tTWRjAf+fcmzTNa2JL1NYnVevouKiiMirajajFx0IGd3WoikhBB8eBWYmKf4CIiLiQFkdxGAW34lZ8tEURqS3VSnpr+hj7yE1McpPb5J5ZRO/Qmogrv9X5zvnOj+8tVH6ab5GJD1MqOr9WfM1GL3d55XKnyudsVz/QvJSOq39Ru65Z/fHn8YpAMdez69duq10N4wT9HvyLV6BVVZMdiVHMZejvec1vne9n2T96fJdgKCDKemYnRwhG6/F6dawxA1UsuG9rNv3E3/U1xAeHATASipsd/9B+qg0AORc2Y8YhM42d+DAL9H7U5MlzAytpUhsNUxsN07QyzK2b91wbF/a6d0Ad3rVXte5dWTYf1251sWahx9Uj9XVIKTi3L8y5s5eUC2s/dkbp8YecP7m1YqV+aVnHi94RVzdHxwBYUBfBMboxhuJKB+h92UeXZ4CNzU1IKbEyFspxAOh9+soF9I9Y/LjkS89X1ev0POspVXPL+j1q51Ibry7x+X0smSeRFRqgce0i95w0M6TMLNMpm44uG03ZXrUjFGMiOUPSKmLnC4T9GlUeWRZmJjKk0zax2CRvjRT9RpoJ02Y4rZdyNjhqAWAVFMmcw0Dcqpi7YsHhzZBJ33CWwX/zOEqRyEuOnGgtwTx6Kaaaag2roFBKERsvD8zNOMSnbOyi+mQLVkGwbccWZEtLM5MF36wP6ivz5yhI5hySOYeQV6BJQU2o1Pvy560bxMAkzI+UemhhUEMKwdTHAtl88QtYn5EhGtCIBjQCXklTQ5B563fTuLpBSIA79zt58FbwLqXzLqVTVLCizoe/SiMUrnZBifTMLLAv4MNsPMiFi6eFO+hKKTLprBvd/pZfsbJZAH7f/v/4xsYtfghXcaO75HHb0UO0n2oTFbfGXPk8Ko7RjVy2mUgkxOkzx8Q3raBKYgzF1bLliwXfS/4DRDg0Cwcupc4AAAAASUVORK5CYII=", "수박조각": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAC2UlEQVR42pWUy4tTdxTHPze5ydybNPOIjDMYhcA8sJkRqjQo0oILdeMDBAUXiruuyjCbCi1dKNq/oNaFDu2iUERxo1ahYhl1U+hDZ8iMY6IyVpNJ7mQmuXnee3Pv/XURRg3zKDmrw+8cPr/vOb8vP0mYy7QTQjiUyppoNASBQIiAGpJWah7ajFJZE5d+PMTYuYPcm/y5pSa1o2zuwnmRffg7HScO8VK9RirtkMo4/PJ9QmpL2fzEFVFJJsFqYD+ZoacxSiTYx9AWLzfvXRZ6KS/agF2lkmrCnKezhO1RIsF+hiJebt69TLGc/39l+UeTYnJPXBTTWf7J5HisLQHQPTiAEu5p6ZU3As1++40oPZ9DUhRCvZuIliuYhkVZy9MHlE3I6O/7PRspKs3OYKTTIFzeuC5Clgl1+HAaNgCuCw0HTMNGuBvAEme/wshkwHURpsVvhTJ5n49Ad9dqu+gGjuOuHnN+4oqYn7hKMZ1tOf8i0v8u7/4gX3dncxfOi8L0NLWCTqC7i78qVRSPh9GASq3QXI6nw0/nrh3rw4TjYGqayP56h0qpQrVWpzf0EbphYXs9+IMqtaKO5JGQfTL+6DZMu4jRqGMYDn2bt+KTfU2YqWnij2NHAchJEq88XuK5RQ72bsLr9727We3sRIn0E/x8N3+nv+Npqs5Uss7961MSgHTr9phIPnvAXuUI5k831rVJcN9eOkaGcTcrJHI/cPdPi2rFola1uH99XgKQ88sW/y6U2D6UoPOTGLKqIqvqKpg/uo2cSLOUWyKVdqhWLGLDcWKD8fc7K+gOrxfKFGIJwjtPooR7UMLhNdVl30zzYnGKVMahVrWIDcY5fWJcavk1ctpbcerLzzhzuBWS0ZumBJh5aVHSDUyjadiV0VZ9QbZt8/ptUnx98UhL0XZAiGZetwSnj4+zZ9d+AAaiMWlNa8iyzEA0Jo18fEC4rrvuI4wMf7omZCX+A7d/Un5WRUhTAAAAAElFTkSuQmCC", "가문비나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADYUlEQVR42mWUS2hcVRjHf+e+7zwyj2SmyeRR2togjVmo4EaQInUnupQKroQi3brJQiq66brdKXXThbV1kS5KfYKuhJZgESSxxhBJOq9k0plkZu7cuffMOS6mzctvcQ7nwPfj/z/f9x2h+085HNVyRQ+U4tIHH/LP+iq+EERCgFLkCxPcWbyN0jA9MyUO54nDoM8++VzfX7zDyy8UeamUxjIN4jAGy0boAWYyxaPHZX5bqfLOe+9z5dMF4XneUVAiM67fOHuCjy+eJ5KS7d02p8cLR9Qur25w7uwMADfuP+DugzX2mlWxD1pYuKJXf17k3fPzJJMJojjGtiy01kS9HsqwAI3nOjSauxRHc7iuze1f/6Cuc9y6dRPjyWZZ/3RvkcsX38TzPTLpBAnfo7r1lJG0T08OiOKYqYkx6jstSqUClfoOI6kEb792hs21x5SrNSylFTKKaHd7AOx1AjzPxTQMNisNxvJZANY3aiR9B+KYXCaFlJKN7TbdsA+AAWAI+Or7JZK+TRz3KVcbTE8WyGVSbLX22Ol0yeZGKBXz1BtNZiaLBBp+fPQvvusAYAkEBoK1WpMv7i3x1quznCll2Wl20Foz8UxRtxfS7faYOFHkh6UVHi6XqW61cU1zCALQMWQzPrFU3PjuIedOFrAsiwuvnKK+u0ev3cN1bKKB4ttf/qTS7OD5DinPJojVc5BGKompPSzTIJPyaQcx7bDLl3eXALA9CzlQaK3RSuMnXWQkGWi13xrG4T6xbQMEmIbAEFAcS5HLJiikEziWgVYa55mVSCss02Qg9AHIck200ghgMp8ilBIhBJYp0Fpj2QLbNlFSYRrDyTCVwHRMlDimSIYSxzb31aV9G8s06MvBgWLfHpYYUEKjxfAonoPCWHI8Eq5NY6935E6I4VKrt/E9h1Y7wLTEEJRKpzk1++KwGYMIpfSRZNmXdHsxnSAaVscU2L4x3A2L0cIUo6P54ayFYcjpk7M6n3aZm87TCvrkUx71RgelNH7CodbqkE64jHguzSBktxtRb3bZeLImfN8fWvM8j0p9Q1y9dp3f1xt0epJ2PyIYHFju9BVKaWqtgLnXL3D12nW2dyrC9/3//0cAy8t/aa0VH126zMrfqwjAMQxCOWC8NME3X99kfn5OHH/T/wCf2YSSfpvp9wAAAABJRU5ErkJggg==", "강화된 청금석": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACwklEQVR42r2US2gTURSGv5kkE/OOj9Yn9YmPYrWIYmnB2o3aVd2oIFikiIiiIAqCICLiyoWIiriziCAIIl24ETc+EUXro9SBWk1rTG1ibOIkmUkmc10ERxKn0pUHLtzHOR/n3nP/IwkjzVQsOf5d1NXPlP7l43bavHTxujD0or1eurGTy1d66VxfL46f2D8pUKrN7NrVm+JrdAuKL0DzqhBBv4t3qkZGM3n18jXDfeeq/B89uU0wFJAcYSfP3hDLNu/AoygkkgYlU1Sdj8RTfBz6BIDQxuhqMjhypFsCkGtTjaXKJL5bjCT0KlAqEUN9/YjURIHIrDmV0bCG3t67to8NG3ivinXth0Vjx07H97h/6zLe+kZ7vXDeDCRZJtx6kNOnLgj7mnt7TonlWw8wUZCJRCOOsOGBF8TiaSLzG/86S/ff4fr5PZVq9vcP8jb/gNZNbcgumZyWRwgLgOfPXtpBPxODjjDPrBU8fvqmktnatV3CmN6M5Fbw+33I4bkgyY4ZNqxstudaJk0uk8bIpimqfbhEURFqeTXFnynMQoZSsYjbF0J2K44wbSKFoWUZ/6wyMaqS/aJiZJO4jWSlAPlvwwCUzQIlPUMuMTTpLy+bJulRFe2rSi45jBAWsqlx6OCuCkxyeQBQfDOwTB0hBPnkiDOsZKD/iGOVi1imDkIgW0U62jcgd3a245fzNSFicgEKi5KeoaRncClBJNmFJzi98s9aWtdJZGMo4ToAvMHZSJJMSUtTNgp/v1lcxRuowxuow60ECDc0sb1tNstXLKmU7F7fFaTEczzGGB5jDISFv34xLq8Pfyhqg0q5TBXYHwrS3WJy5uzRP9oUQpDT8vbdtm3rIZfTK22labcdnE+OMC0Uoaz2AdCzb6etS0eh19pvqTz8oLNp5TSi0RBHj+2TptSCJrPY5y9i4aIFEv/LfgEMATn/2DgpqQAAAABJRU5ErkJggg==", "말린 켈프": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAEIUlEQVR42sWV32tbZRjHPyfnJE3PjyRrkraJ7Up1c7Ctoji7H7V4o9apKHgjgiDMm11sIJMNduX+BvFC0P1wK05R0O1GHNtwKGMy167Yres2W9pmSdskTZqTH+ck5/T1IiUYOox3vlcvvO/7eZ7zPc/3eSRhr9Bqzc3NictXrvDH2CQfvP8ee/a8ILV6o7S6kM/nxezsLNeu/cKlq9cZGNhOPB4TAJs39zQCLKZSIhKNSopSR0qtMv7kxAlxf/oeuWyaeG8fN8cmmZtPAlDIJhrg4X2D4vRXo2zZ+rTUEnzgwwNibuYhVdsCYGI6SW93iHBIQ9V0ZhPZpvvpbI7XRl7h67NfSo+V4vbYmBgfv4W5mscIBCmXfWSyOXRNxe/3IytecoVy0xvNL5OVJKbvP+Snny8Lz+PA4+O3OHXyC8zCKkYgSLseoGS5GLqK39+GR1bIFyobwB4PPHjwkE8/+3yjFMP7BoXX58PnayPe28ftiSlK5TqkM+SjUHZwXOiNbQLACAQxgiGSC3NUyiUkyUN3LEYj4+XltHj7nXcFgKYZRLti3J6YQle9xDuDxDuDrJg1FFkiqNUVjHbFUHWjsVcUL67rkEo+qpfb3btT4s6dKWb+us8TXR0IyUOhWEasOehaEJ+vDsrkCigeCdkDpUqVuM/X+FLbtrBrLhXLoVar1cFnR89z4eJFIgEf8d4+5hdSLMzM0N8TJhyJ4F0HZNPLALhrgmzeZOs/JEwl5smZNYoli9yqibJt+7PCUGUC7R4mppNousFa1aYzVA8CUDQLpBLz9dpd17i/J9wItpJZZjlfJZ3NMfLqy5w/d1JSDFXGLFpUaw5b+rqxrQrtmk5HOMpiMkHJcrHtKpWyA0Bbm4+Qv41QR5jFZALTLFMoO+RXTY4fO8LuwV11S8uSoFpzqNZcNoV0imaBds2gXdVIPkqQL9Zw19b9L3swFBnV78Uje8nncpQqDkXLIdoZ5a0397Nt27rznuzfLIKqwqaQTmIxT2opQ1fYoDtisJyvNpVif08Y26pgV2tkCzUAzGKZYqncZG8AzzM7d/Dx0WOcPjNKailDrCuCoatNQMuySS1lKBVNVgpWA5paynD40MENUADp6qUL4sbvNymaJX784Xt0XaVSsahULEqWi9ruxyMJxJqDoavYtTWqNZdS2eLwoYMMD+3lxaG9G8HCXuHwR0fFN99+x/MDTwGwkMywkKo3mEhHCE31EtK8DWkc1yWdyT020yYwwPx8Qux8bk/TYawrQjqbQ5ZlOkKBen9eNYl2Rpkcv/Gvzb4BdhyHqXvTAuDkmXOcOj2Kosg4joskSchy3f3Hjx1p+vstJ4iiKAzs3CEBDA/tE0tLaQB+/e06hYKJ47i88foIuwd3tYT+pwky9NKI+HPyzoaJ8b+tvwGXxOsZhZv6FwAAAABJRU5ErkJggg==", "강화된 레드스톤": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACxElEQVR42r2US2hVVxSGv73PfeR1c2PMg4BWsVKRphETaGNaUBBaog4E0ZHFRosDhdq0BUcq4lSwj0EpLT4K0tI4dtJOpNiiAWnVqEk0uU0TKDfeJLc993Fee3Vw9IQkN5KR/2g/1v7499prbSXODCvRdDYnzS2r1YtiYpUWv/risjhlN5rvfb2Zb78coHnnDvns5NFlgWqxs2++viq77XvUJWOkutux6muxBx/gz/7Hn7cn+Pju0wXxv94coC5Vqyo686bGSXWtIZmwsO8MI64X7W158xWuNdWQGZ0GYMIXvr/4E8dO9AGgF8P8yXHk738oP5laAMrkCtwYyVLK/ktrOklrOklXY5KrlwaimAg2dH9YDnbtlg862yrm4/NfhnnDmp+verUZrRSn26o4c+qCRDk7fqhfPulcRTyfp76huiLs9niOmSfTtNclluz9kDUc/e58mLO7fwxz47Gi550NaK0oFlyMEQDu/JaJDt0rOrRvaloC25z0Gbw5GDrb1tEr262AhFZU18RZi1qazGfqWJuKxjMFj9mCR87xuZIPsMRNSM/kGFkvYC4IcD1D2tIkdeVyytkeecdnZLrIw3yZB7ZD1g2YEh0aGC2Fr1YywlxgeFRyl61y3wiP5soMFV1Gyx5GhLwoDh9/P4TFn5lYHbMoGUFEGCt5FWFlY5hwfBwjYSxQAt7e0Y3u7d3OrI4vOCAv6D8jkDeGvDHUWwpLKRpjYc3o7p5ONeJDazxcaItbaKXI+QHFwCyBDRVdWmIWLTGLWq3ZWpekade7vLZpg9IAP16/zM8OZESTEY0R2FgVp8bSpKvnO27WCxaAaxJx7P37OHuuX0VFKyIU7GJ0uz3vHaJsFwH4KD1f9mMlj4ZEjCt2CO07coBjJ/rUsr/GYj1vFf/3W8S2vUVDQ4r+Tz9UK/qCltNfmUlZt36N4mXpf/gSNU3NVNMyAAAAAElFTkSuQmCC", "뼛가루": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAEJ0lEQVR42p2Uf0jUdxjHX9/7pXy/dj+s251Wpt7pVkg5dVF/XEKk1DKCxth2ZYwYY6zNJRvE2B8bRIxYtBk0om24LdagYdCMFWsF5kql5OqmZxnqnXrn2feWu9vu9E69z/6ILk3ZH3v/9Xmeh8/z+3lLIvmQubjVPSBudQ/y1ps1Ev8DurlCRI0Jvz9CT88IETUmAAxZOoxGeYHziBoTspIlyXLWPL1mrtDQ2EwiOcvHh/bS0NhMQ2MzX39zddFMGhqbuXjJI57Wa55WKIqC1WrlzNlPeLfxZYwWC+49TcK9p0lcu+YTETUm3HuaRNOJ/ah/RampOygWlJxIJLl4ySO2vvgCzpJ8AOLxOMHRCKnUDOUVpdjtJsbGY4yFeymvKEWWZfR6PYtmmIgnRcu5LrZtX4+zZDmPgiQIBtWMw23b1zMWjnLl6h+UV5SiKAp6g+G/h+LxBAj4xxkOjAPwfGUJU1Mp2tu81NZWceD9V5mY+JtjR3+itraKl3ZtZtvWDdTUHRQnj7+Hozhf0gFYLIr06WG3+PGnW6wrd1K3YwMAredvYMjS8druTZk2RKNRADo6egmORggG1YUZzqbTqJEYNrsZe56FvLylJJNJUqkZ9AYtVquJBw8mmJycJBZLsHSpkaGhMPF/phBpcDpX0dc/wvT0jNABxKKT4tjnF2g6sR9ZlgGIxWLMpmczkW/fHsi815QV0t7mpWCVjTVlhawpK+Tb71oocdjn99BqtRKPx1FVleNftPL2OzvRajV4PAO0t3kpfXYFJnMON7vucujwvsw/VVU5e/bRxLXVru2io/M+G11lpKbT3Ls7gtc7iGvTOnItMoI0BoOWZHKGRCJJIj7F5i0VKIqePl+AG9d7QZK40XEHi1lBEwpN4B9+gLNkOaHQnwwOhunzjVJUZCc1Pc3UVBK9XoPJnAPA7Mwsq1cXoKoT+P1hfL4AQ0NhliyRMZsVJJF8SESNiYbGZl5/o27RtenrDQCwpbYchyMPny+Y6eGqQhufHT1FZm1OnrosenpGaDqxH/fuj6iv38Ghw/tQVZUzP7RhNMo0HNiBxxPAeyfAb7/eBsBVvXZxtqmqLCY3N4eWlivsdW9BiBm+P91KrtmCyaSg1Wro6rzH2FiU7GwDNruZ7u4eAn4bRUV2iorz5p9eVaVDqnY9R8u5q9S7ayQpPc3p0610dfZjNOWg1eno6uxnODBOdrYem93CaGiU4cA4Go0GhyN/4S3bbBbp8oUjEkC9u0a6fOGI1Hmzk0QizrJlJlzVa3FVr6Xb4+X8z5d4bO+/fw9VnX8p0tOM/RgDgyHx5Ve/MBZ+Yt+1cyPrK0spWGmTBgZDor2jl9+v9/DhB69QsPIZSa/XzV/suXAU50vOYpvIUZ4wirMon4KVNumxfWRUFYEVy3AU52cY/V8OrM76L85qfAAAAABJRU5ErkJggg==", "강화된 석탄": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAACrUlEQVR42r2US2gUSxSGv+rpnp5JJia+gk8URWN8v1G5oK5iNiK4uBslouJGUETBlYiIaxEXPpDg4t6VW3Uld3PjSvHGEI1RxEf0Ro09j57p6enu6T4uhrREO5KV/6qqzjl//VX111Hi5ZkKxr5YMrt9pvpVjp60ePXKbfFqfjxf2LGUWzf/omvndjlz9tikhOpHZTeu/S0vrBJGOs3mDSvJ5ZroHximWCozPDjE+/6hCfn/PrxDrqVZJSp7PTLK4s5lGIbBwOBL/KAexzpWd9I6Yzof338AIPIDenvvcOLkoWRl+w+clqVrO386QsGyKFh5/HoUr4kIHwde8OS/uwpAGw88GxyWTVv3JRIB9D34h2xzLp7PnTcHpRSti+Zy/txliZX19JyR+atWUCyXybW0JJKNvHnL6P+jTJs+46eY8+kLvdcvNe5s4OkQz0dGWLNxPZqm4VZdRASA508H4yK7WEgkwzTpe/i4oWzd2m7xdEFLaWQyGdKZDJDsgPb58+Kx61SpVat4NRfvq01K/LS8+vwJr+YSBD71oI5upEmlUolkruPgeTUKY2OULItSIU/NddFFazxAxS4BEIYhQeBTLhUndXkURRQtC7tQoFK2ERE0URw/frBBprTGo6bTJlEYIiJUbDuRLAzruE6FKAqJwpBxS+zetQ2tu3snzUaGqUIEgiAgCAJSuoFSirTZqNe37dioxAvFzGbxXBczkwXA92rU61l03ZhAZhfymOb3zdtmzqJ7x1aWdyxRGsD9e73g+BiiYYgGArlprei6gZn9Xuh73gTi5qYcB/Z2ceHiKRWbVkRwKlUZT9rT1YPjuA0LtbfFxRXbpinbhJ9v3OfhI39y4uQhNWnX+BHjX6XvUT9/bFlPW1sLp04fVVNqQZPh3dsPsmjxAsXvwjdPPTMqHxtVMQAAAABJRU5ErkJggg==", "설탕": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAYAAAA7bUf6AAACdUlEQVR42qWUz04TURTGf8NU+mfaMoWUWDQRAgsDbNjIQhcQog9AYGF4AV/ADQ/gwoUxMfEJNCGSuDNaE5NuWJEWFoWFqUHCUEppp3YGOkxnOscFsaQBjInf7n73nl++m3PPVcQ1uU7V2plsFysATN8fZuR2QuEGKddBjLIlrXOf83aApmkQeITUgHt39WtBfdeZB+UmjeY5mYzO+PgIjhuwbzRvCnIV8jX3Q6amJ5idnSKdTgOQSiVQVYXllVX563WMsiUH5SZT0xNoWgRVveCbpkl/fxjfD8jnd/nyOcuThVkeLzxQepJUa2fiekIkGiOZjHUBAKqqEgRCEAi6rhOJxjk++cVmfld6INvFCvT1MzMzcSXqwMAAtn2OYZxQr9s8fbpI0/Z4+erd5aFsdlOq1aqcnp7KH9XrdTk4KMvOzp6IiDSbTTk6qnTXpdKhZLObsrT0TPa+70gIIJFI0Ol0sCyLZDKJpmmEwxHi8QDLsrBtB8dpA1As7uF5HVKp+GV3bNumry+EiOB5HgDhcJhYLEoiEaXVcvC8DkFwUXB83MB124TDty4ha2sfKJUMHMdnaGiou9FutzFNE9N00PUko6MZADKZQQAqlUZvi5dXVmVu7iHz84+YnBzFNE1aLRfLcjGMGqlUHE2LXDwFo0Y+X6BQ2GL9/QulC1n/+E3OHJ+zlk86rTM2NkokEkFVQ1hWCwDXdSkWd7CsFoOpKIN6lOXFBaXb4uXFBUWLhsjlNlhf/0SpdEijcVGcTMbw/Q612i9yuQ0Kha0ewI0D+Hz1jfzcP+rx0ukUb18/V/55istHJ9Ju+z1eKKRy987wjd/Bf+s3sXND+RkW3WQAAAAASUVORK5CYII=", "정글나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADXklEQVR42mWUuW9cVRTGf/e+9+a955nxMt7G9niLlUUxJoASBQkKUqVAQhYFXRooAkgEFCrqRPwBIBYhIYUlsZWGAlIgUlAgJGQsgrGDt8TbxPssz+NZ3rzlUgx2xskpz9H53fN9+nSFcrPUl7O+rpRSfPH2e2w/XD4yi7c0cnX8JgDNqR5RPxP1oDvXrquJ27fofPE5Ws+MkM1uHwHZQUBpaY2136Z4/tKbjH70oTAs6yjondRxdSwRMvT+FVwFG/NT9AwNH0K0Sp6ZxRVGXjiHV63ij3/JT3+XGMumxSHozrXraurXH+i9eJGqEEigt72FdHoDr1wi8H1iDSaeblJwHJqaW4jHY/i//8zMVhMfjH2DzD3aULM/jnH+8mXyPjjOHl19g9yfnMDsTJG3EuhtSfoH+ihspOk+9SyZmUlKkUa2jp+j1V0hv72DVGGI5VaoBgrNKyHdEsrdJ9bYiDN7j+6oRlQXzP87R7Q9SSmfRUskaTB1jN1NioUAAHngQeb2DdpSg4iIxeq9Caz2FEZ7D9s7O2xu7xDt7qc5NUjmwQwnX36FQm6X2MI01WIFAB1AaBrO0hby+6859eprpDt7KVb2UV6FZLKrFotHK0RjUfpPDzP7y10SU38ylxPYQj0GaRGLVJOkx/L44+YtOgaT+JE4nD2Dv1eLQDxmY/71DwUnT0smhwB0U4faQTUQQNQyCAjQBJwMsiwsb1BZnEeTEuIG0vMxzCiRqkcoIBNI6hN56FEus4eNR6et2HcDYg2Svg6bjq4EQzEd15csbRUolEMAwkDRrflPg8pFF4ChNhM3qOm2DEEYBNj4tMoAJ5BETAMAFdbJOQCZeDxZjabEJGB/N3/YG4z4yKD2oNAEBSQRQzwGFcvVp0DRiMbSztG+LkCEPtOORrsRslkA4/+zpNUYxz59FtsUOJWAUNVklTGIWhLbBsdVrBVq3jTU6YmbYF94g4GRYSGUm8WrVLh64hl1okVxoV8nVw7IFEJSCZ3dok+iQefuQ59j0ZDmuGQxD2knYNkJ+HZ9QURsuybNsCw+XV0U5z/+nMmhUeYyIVulo5JMCZ4mmM8G8NIor3/2FeO5tIjY9tP/0UGtTt9Xn7z1LqW1B/ghGFKwX1W0ppJc+e4GAyPD4smd/wBNNW3lJb2JTgAAAABJRU5ErkJggg==", "순수한 다이아몬드": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAC9UlEQVR42p2VW2xMURSGv9OZOZOaS2lKtWUwQrV02qJxC4MQ9whJRRpBGjwUISJEePDAsxfiFtcHIfXAq0gkJLRRl2hdpp1OG53RdkZbnc6MOc6c2R5aTent1P+299r7z17/XutfEv9AKJ0MhZav38RUR7bEMJDM6X+tjejAl89eceT6QxZbzGLb9nUUFedLo91JGe1AKNghys9dZs2+HXjdbvZfuENrICii0ZgY6Z40khQf6zziyLVKdh/dg8lm5amnlZ5wD5HqGnISCtfPH5OGk2LEF+8+e5H1FbvId0xG0ZIA2Ow2stauIuByUezaKMYsxYplpWLzqQpcUyZS9z08KJ6Vk41hQSFvXtcK3cS3blYKZcsGZuRM4lskPmxG8/aWcfjqAyKRqNBFfOnFW8rLNvave2JxYnGFrs4uFEXp3w93hxnnXsbylWWjv3hn6SFRsGk1JlNvJT6pqqXmkw+T0UB+1niavU2oqorX00Dgq59QY+OQ2QyqY4/Hh7UrSra/naoPDWxduZAMmwW72ciSKXnE4r949rwKpbMDNdxNamaW/s9z502n5UecooJc7JZU7GYjBRPTAHDNchBp9qGGu8fWILm5TtJEAqvNgpBSSGhaf8wmG5lsMQPgLCkZG/H9yotS8nM9AMFwjGhc/Sv+/s0HPS4wtBRxVUMIMJvNGIyG/v2kEDQ3+f+fuNrfwa++ThuIqKoR+qlglGUSA8pON3GwrR2tT9t3LYNt1GAyoam9EsmBdl48uzd6uQFcrejtKNOSEqY5pxNTNV4FOoj3ZZHhcBD0B0gvnE+5IYHVZpF0u1skEhXufWeQVyxlZs4k1iyaR7AtxI0rdyDFQNqcuah371P9slKSZVm/u1mtFunGyf2kNnjp6oniae3EFwiS1JJkmixsCLXxruaxJMuyvs4biKLifOnWBLvYfvoCSwtn8+RTI7K/nduXDuJ0OqT/Nvo/qKv1iKO3H7E+cwLHTxyQ9Mw8Se8wrff4xOxcp+5h+huGby5cxVyy2wAAAABJRU5ErkJggg==", "발광 열매": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAADNklEQVR42o2UXWyTdRTGf+9Hu67rSju7FoeGsm4wkq0LCwkEldhgomR+hHhBlF2RmBgyvTEmZld+JIgxhsXdiYlyIWQGjETHhQYlkYBxGxnYsEnmpmOwrh+vsnZ9+370/XsxMyjdB+fyf57/c86T85wjCUPjYeKLi8eEoVvYZhmA3pfelR7ESDUNqOsRmXaJvP6v+GX0O/JFC8O0QZZ57bnXhar6JEXxVeDl9QhvzI6Id04dRDuTYXa4yNRfgplcLcPJV7idPiMexK9LaMyUyHw5h8/v4HIJcAT2P3mODy0wePEzLo0mKkjXlHxh6LT44/pvBAIqtmNW5LJZh+KmqgbXIzxFauYmwYCHjFZJmMsJdL2acFXJPc+2iHxmmicT+zl++hqNDXV88uZRfug/v4wZuyM4OeJwaTQhFvVJUdXhyEcHlkse2KyiKGWafOWKQuFgI2ePDvJy30HSOcFd04GdcqVkx9LRJi4LJX8HqUYFt0osFkEUDWqdAtnfL9CxM0GhcJc/bwyzLb4HyaViCxmntIJkc0ETyRO9xLZEiXW20bp3B617dxBrjeHV50ie6OXwW/2kbk3y9ecfAKD4apHdruqhTHzVJ7Sr39PVGcf9/NblxFT/NwB46urp6owz0N1O2iPh3vTYvc9uFVeNyskRk83RVYbipArYYykACqaDrqhITRsAKBk2heLStN/v6SMRf2rtKYuihZXOo09lKTsCwwZLVpAD3iWZwkGxDUq527y4ez9tj7cA8Ej9RlRZrfah9dM0qdQ8c/PzK1ppV6NC0J/j1/ee4elPx5ffj706KK1o7NnJJIvmPbO2bW2lLhpCaa4HYMvudlq2h3EmMwx0t7Pr0BGufPhjxdVRQ/F9qLVBxi6fpzkSxlMW+MuwoKVxRQPkZYnpc+OEgw41RgmhLa65+3KoY58UeeIQ18Yz+BvChBojPLoxQp1bQo1uYEGCq+cmiDQIPKaO0IprEqoA9ZEm6Y2hJAPd7fctpwTXf8bvFXTEHLo64wDYlknq75tL+RVCuv9iZ6cmqrZdkcHlgm/f7vnfCgLLLPHCx2fxBkN4gyFp1Ysdam6TVpMS3L5HPAz2PxpARbfG15swAAAAAElFTkSuQmCC", "아카시아나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADPElEQVR42m2Uy2tkRRSHv7q37u17O0l3Jp1MzCSZOCQqTgxBdCGC2/EvGNzoYla+wP2IMzCCIooPXLhx57jwwfhCQRRkwH8gggRJnMSZdDqh053bSTrd91V1XFzIw/EsT536zvlV/aqUJLucjM3Nhoi1vHrlCs31O7ieAsBkgtTGuXXra6zA9PkpdXKfOgm6dv2G/PjNV1waFp4eDwiU0OtnAISBx3Lq0u70+KUJly5f5tobV1UQBKdBI2cmZPFCjU+fKZEmsLG6z2OLlaMmWx24u9nlqflBWuUa79xu8utyk9ZuQx2BXr96XdZ//4HnZzRVG1MpBRymCf1MOIgVw2UhN+C5sB0ZJmsu5VqZN5dy9vQoX3z5OU59Y1Nu//w9bz3hMu0JQ4c5OSlrWwmz53w0OeogZWiwRKOd8chMyD/bKW5qeHnaIWrfpdncQYtY8iwl6gh54uAO+5R9hXZhabXH1JgPeGy1epyraXzHEoYeAyW411KkicUCDkCC5cNVh9ERRdR3Wa0nVCoh58dC2m1Nu62ZGAmYOuuztm1YnA2IJODbZkamDArQAP00Y6lree2PgBdmHB6eGKCxZ4j6lvGzAkB9J2NnXzE86PHTmuG7zgHNgz6OUscggJLv0kxz3l+B2YGcwPV57gw09gq7OH6J3xLNykqXTVEo95T9jkGuqyh7Hv0sI/MH2eh2efsAbF6siwix04dc0KGLMYJzwpLOSWrZ9wDopikAXqDJfEs45JFoi4gQeEXvfs/i++79INMHVymmKhUSYwo3a40IVEslhgKf/Y5BdDGGQk5JOwIpD3znuMNQqUSgNZjj4pExj8wWCc9TqP+T5ujThzfgebR6vVM5pRSOo4ju9fADl35sMEjho2q1ysWLCwDsJQlWipGjOCYXwWDppAm9LDsCuuVicicV5uceZXrygeKtxXHMg3NzMlot89DEMFEckxmDrzWHacqg79PpxWjtHN1gJ0qIdhM26ndUGIaFtCAI2K7X1bvvfcyff7eJOjFZbo8lOYrOfoK1Qmcv4fEnn+WDjz6h1W6oMAzv/48Alpf/EmsML770Cutra1gRXKVIM8Pk1AQ3b37GwsK84j/xL+GLfTHNMZzaAAAAAElFTkSuQmCC", "순수한 청금석": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAC90lEQVR42p2V30uUWRjHP2d8fad8Z0z7ZSoajpYpWzlpwZoVeFGYRGREEQm79OOmcGOJrhaWYOmym4QgoVgWXMMuCvY/CCLXyiGtccwfNZYzjTo1+s7veefshbuWv1/3C+fiPOc8X57ne57zPIJ5kPEgi2HUOyaLigsES0BY18/ZK5hAv3tQttx4yPfbrPJE0xGqnJViJR/LShfGA5Pyh5Y77D7STI+o58L13/F9DMhwOCKX8xPLSfG6zyNbbnTScO48UsnhmctLNDxFzPuc0twobbd/FktJsWzEzZdbqW48j8NRQCI5E+BaLZvcinqGRBXOXUflqqU4uP+UrD19lfKyTbiHwgvOc/MKseTt5kV3rzRNfP9ep4wWNZBfkI9/IrFkRsUHmrny6wN0PSxNEbf++ZLGppOz+0gkQiwWQw8FSSbiX+16iMytdRyoO7tyxGdOXZGOvYdRMmcqsbvrBf1vBlAUBUfRRgLeQVLJJL4RD0Gfly9jQ4tms6COPZ5h1mSH2PhhjNe9buoO1ZKzTsOuKdTs3EE8Hufl06ckpidJRaew5mwx/3g1zhL8kzqlOyrRtCzsmkJlmQZAaZmDSGCEVHRqdR+kvNyB3WqwJsuGFBYMw5g9s2VlsHmDCkB+xb7VEXd0tgo5OQBA8ItONDa3Kt6+6jHTBRaXIp6YiTJTtWKxZMza02mJb9T7/4ld7gkSyfQCeySWZuJzgoxMFeObsjNNHJrwk/5X2/7hTwudFBUjlQRAjft58qTdHPHdm2fxP2vHN+LBSCWJxgy6e6dwuacByN5cTCgwyrqSKi41fYfNrgnT3U3Xw/LgsV9QimspLMynZt8ePo8H+OuPNqTIwF5UgdHXQdffnUJVVfPdzWbTxL1bF9Eig0xP67z/MM7YRx/pdJpN69fSWOKnx/VYqKpq6jGR8eCc9c7zSjr3/yivtrqk8/gtWbnzuBxyu+T8e6tq9P+hr9cjf/rtEQ3VuVy7fkmYmXnC7DAd8AzL7eUO08P0H1ENSZfS/MO6AAAAAElFTkSuQmCC", "짙은 참나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAC7ElEQVR42nWTT2skRRjGf1XV3VPdM5lM3GRNTEIQBI2goIgHj56FPYgXP4AgHsXb3sQvoeii8SN4ErwseFqQBQXDnnQnwZ0dZyaT6ek/VV1VHma3nVn0gTq9b/3qeV+eEqGesq7h8DJ473n/gw85P3+wUds/2OenH38A4OTkWKzXxDro089uh6+++ZabvYjdrZSyNBsgIQW5abiYLPnk44/44vPbQmu9CUqyvdBNE04PB2gkf81ydm90N0Djcc7eXg+A34YzlqXBFGMBIJ866fc0L+33oXL8XVToTsR1bpksasbziulVSZrGXF1X5HnN60c7vLCd8fY774bR6HGQw+FlOPvue17e7yOEYCkg1TFFael1I2TjkM4x6GvK0rK91SFfGmQQHO31ePD7OY9Gj5Hee4wxSLnanbMOQUDFism0JE4TsjRhdlXS0RG19dCJaGSgqhtCCLSjKSX5c5wTK4FUkvm8IoojYh1jXaD2kHUTsixhPCvYH6QAPJpXCLEyEAEIYFkaHo4Cu1mHZEtjS0ucxu2ir8sG4SwH/YzrwjCaVzRNwxPOCgSQpR2EEFwsCnStsNZznK1AiZdonXAxWzDynry2SCmJoghnm02QlJJu7LFWstPVzPKa88srRAhIKehECoRAOY+UsnUaKbUJWldtG4QQHA66BGcRQlB5KI3DOd/uZV0tujYWgJ2uwjQBHwJJIlGxREYCKQTWNshnII1zm6CniuMOADoWOOeorG8fUkr9p5sW1LhVs1JR29hLNXntKWvfNisl/x80GGzz5ltv4JzDOIF/ErB12ca3ztbrxlhePT3l4Pmbq09bVRX9547DVtbh8EaPRWHIEhjnFhWgpyWThSFJ/s1VWVtK0zCfPBRpmq5G01pjirG4c+dL/hjnlMayrCzeOULwFA6MD3g8tW1479Ytzs6+xhRjkaarlBPq6cb59Zefw/17d8Nrp6+EThwFHUdBJ1FIIhVePDkK9+/dDc/eCfWUfwBxYn6G/5ljTAAAAABJRU5ErkJggg==", "순수한 구리": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAC+ElEQVR42p2VS2xTRxSGv2vf3MQvCEEJhcRxAIEVYyESIlVRy0O0CIi6SUUi2EColK5aIfHeAIINRLRVF91006g8BFI2rLpqVREpUkRVGsWkwYCdl0nAjlPs+Kb3+vp6urAKCnld80uzmDln/pk558x/JN6B0GdYDBPjk8Jbu0FiCUilFfPmMhbwZPi5uNN1BZu3UbR+foAdDQFppT22lRwS8aT45uxpOlr9tFQO8eOl80y9iAtVnRPL7ZOWC8XQ47C43XWVzuPNrHLaiIVCqBmN3qcaWZePy99dl5YKxbI37jp1is72AJW+GoSZA8DlLuNQYznNq8do2N4iig7F7o/axIUvGqiorUV7Ob7AXvVBOR/X2fjzj5CwTNz9U484FtSprK7CSP+z5Is6DlZz6/plMhlVWCJ+dP9nWtr3vJlrcxq6ppN6rZLN5t6sZ2b/ZX+9zKe721a+8ZG2r8Rnu7zIJYVKHOoPMfJ3FLtsZ623htjoNDnDZCwS59Xka0Ym0ou+ZkEdh8NR5urKiE+sIRJ6RsPeJpyrPNhLHWys82NoWR72DTGdNkipJhsqFOvJ826rJ5OcZnPAh8PlwF7qwLHeB0DNlloiUxop1Szug/j9m9BlJ05XGRIC03xLYC91IHvKAWgMVhVHfK/nB+mvyUKS1VQaQ9Pn2UMDo1ZUYPFQ5I0sIFAUGZv9rYsQeWLjifcnnok+I5/LLTwwq2OoaZQSG9msWTxxMjGLaeYLIhQdWWAvke0YuYI9ki7h1wc91og7Ll7j1m8JxiJxcjmTvKGTGQszF4sUKmO9m6mXaZq2eAgeOorb45Isq1smo4qTh9s5WC9TVb2OwIdBEvEUN7t/R7ZB0Ofi+z6T3v77kqIo1tXN7XZJX1+7wWDSiTqrkoxNkniRIJ8X4FnLcPk++h/9IimKYimZCH1m3hgND4rOT5pF+O5J0X2iWbQ27RSR4QHxrl9RQv8/HofCoufbK3gCezlz7kvJSs+TrDbTp+Go2OrfZLmZ/gdelEm9w24ssAAAAABJRU5ErkJggg==", "순수한 레드스톤": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAC9UlEQVR42p2VW2xUVRSGvz1zembCmTJcags1WFNsJxAurUKghRiIjSQa7ykQHiCBiA9oMEV4MsY+oeGVqIEAXl40fTE++GRibEKsAaVpS+i0pSkMpZeBCVPmzJzLnLN8qCKltzP+yX7Y+1/rz15r7b2W4gmInWEupG7flTXPVCvmgYqsmLHXCID+G0PyXVs72pbn5a2399DQuF4t5hNazCA9eV/OHDnBu9srea2/i6/eO8nY6KSYZl4W8lMLpeJ6X1K+bWvn2L4G4kWL1G/9PLSKdE4VKdTW8em5z9V8qVjwxqcPtXFs52pW11UhtgNAeVTj1coozalBGje9IiWn4sUdrfJxSy0VG2owuwdn8dXLozRHFH9e6ZXAwpcudsgBZbHq6TjOncl5Izq6dinffPgJuZwpgYSvfvk177y54dG+kHewLZeM6WK7/qPzbKHIywa0NLcufuP9re/L6+sq0MqmqWu/jzB4fZywFqKivorhdB7X8xkYN7mTsRjKWnNGM+sdJ5PD5FaWMVYZo79njO2712Isj6HFYyR2bsaxfuXylRRp1yPr+VTrWvDiPdtUhzn6gHXPrWCJEUGLxzAa66e5uqcYslyynl/aB0kkanHjBkZUIySC95hAeKmBXl0BwLYqozTh7zvOqm5nusi5eyZO3pnB/5VMB+kCc6fCsxwQIVIWIhz673OK73Pr7oP/L3z/jwF8pzjr3M8VcCcy6CGF7UnpwhNZG8+fdpzsHZ3F62GF+w8/IiF+udwRTPjwF59xIWUxMG7iej6eWWCq8xoPu/oAqCmPkMrabC2PsunwAWLlhgrc3XI5Uz7YtZc9S0KsWrOMhm01TGTynPupD02EjUaEs1M+nVd/VLquB+9usZihjp8/Q69ukJuySd9MMz6axfeFcHwZg7tfoqvnZ6XreqBiInZmxhpJ9siRjU0ydPKgnH+hSd5IbJWbN7rlSbuSGv2/6OtNyg8n2om37OKjU0dVkJmngg7TgeSw1CdqAw/TvwHV4U3UPwYPFQAAAABJRU5ErkJggg==", "순수한 석탄": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAC90lEQVR42p2VX2hbVRzHPydJ83/J6JK0LF1wmW3HVlunjqHFTtYXcQ97GI49yBjDviiFPYhDsMiQwsAHQRQqRX1U3IOCCIIvgoLbOm2bduvq1rjYdW2TtCZp7s29N7n3+FCorunqTX9wHs7ve87nnPM75/x+gk0m9VW2svm/Hsp9ib2Cx5jwND/Sd2DD7szck6+/OcR7Qx/KifHb0s6c/wXnsivy/MA7HOjpYiydYeCNd1lcyEpFUbddQGwXilvTs/Li21c4fvIEetVicmIaXdPQCmt0PBFndGRY7CgU5y5cov3ZbhKJNnSjCoDH6yXcGuXeUo4j3a/IhkPR1/uq7Ok7Rkd7kumZuTp91+4wzoCX38ampG3wF59flbrXRSQW5eFS7rEnam3fz+Bbw5TLirQF/mT0S3pP9G30tYqGoetUFJVarbbh1ysarlCAF3vP1DGcdU8rNS/9LREirTGEEMykblEqFolEI7iaXCxk5vH4fBTyeTRVRVlbQxgmS/kHl//LcW0Gz86m8cej7F7O8ufdOXqeO0IoFCIUCnDsaDdVo8pMahpdq1A1DHz+AMJujHuePsxKfpW9iX14fT5CoQBdh54EIJ5oo1wqUjWMxj5IZ2eSoN+Hx+tBSjBNc0MLBv20xvYAEIvHGwN/dfVjYVbWd1MqldB1/RH9/lyaHX9pwzCQUuJyuXA4/h1iWRa5peWdg1NTd6hWa3V+VdXI5f/G4XRi1mqNg5XSGpZlrR89nal/o07nht4kHfz8y9f2wJ9+dJnVzAKr2SymaaKqGtdupLg5fnv9EsNhyoUizdEYA+dOE9wVELazW7msyOP9r+EOB4i2xDj41CGKhQI//fAjAgg378HIFbk+9o1wu932s1swGBCfjQzjdzhRFYXFhUVWsjmkZRFrjvLy80cZn/xeuN3uxvMxQOb+A3n67CDPvPQCv18fo7JS5LtvR0kmE2K70sRW4M1t6uavsr//lPzg/StyK32rOinsFtM/ZtOyozNpu5j+A4FVV4MRVoZPAAAAAElFTkSuQmCC", "코코아 콩": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACZElEQVR42n2TT0jTYRjHP79famlFqAzL1mGImdnB0DEX1aHCiHXpEFRSBy8WlGmQdOjkLlFgYgcnZKfUBE/q0lWQFtFMUaopiX/RrenUbW7+2a/p3g7iz6y2B97Dw/t9Pu/3eXheSSheYsX7hlox3NMNwM2aV9Lf91IsQFNdjVhxjRJacONbDKDRnyffYCSvwKiC5FivN9Y9Y3x4iEgkwoLPj6W6ir6ez9s02wCW0iviwaVT4oW5QgC09Y9ImiN5vOn5xqj7/07jADpamkRHSxNJio8pj4/kwIoqKLpVxomzF7hdfJ1mq41UjeZfwJzHw5DDgS5tH/5lhRVlDQCHvVuEwusEA0FOnink8NEcyeOcFA57t5gPhsgvMG4AVsPrLCz/ItG3xPxSiGAoDEC9uYJZ/xKJyRrq27skgIEPb+lseE7XkItmq21jBiV370kDE07J6VvlZWsnxcU3KDcZRFaGjnV5JzOLIQDKTQbR+7qFrAzdVgtNT81iM6l8UsX+9IMMetz8cPn4GQhjLDRxLL9ALZhd8OOaX9wCfHnXjizLyLLM/dpikvbsRtoRj7w3hSVAl5mNXq8HICXtANNuD9PuWdK1WuIS4qHsXKYwX9aL2pJCcTEnVYx//ySE4lVP46NyUVl0WgjFi1C8WB4/FLnpSWouj7q9jEy5GR6bwOlbJbwWUe2VmwxMfbWzS4bjOq34c15qC9dK7jA40Mdgf69aODk+iq2tFYAZrx9lTUTdVvlqSal0KDuXybngFmBsDEt1lTq0CddsVEDMz7RpO12rxfrRLkVd5WjRbLVtiBLio2p+A/ToItvIWvuzAAAAAElFTkSuQmCC", "벚나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADaklEQVR42mWUS2icVRTHf/d+729mOpM0pk1KK0VBKLUpiitXQgSFgooIguCjK5EKXdkipQUXIj4QJQguXBStiG2D1C6E7gqlgnVZDaFJbG0m5DGTyWTy5Xvde1ykzQPP6sA593f+59zDUZK12W6z95si1nLyzfdoz97Ddx0ACmMw1Trf/3IBRNj/6H61/Z3aDjp96qxc+2mct/aO8MoTT9HnRzuK/L2+xI2pSX6cvsno229w9qMPVRiGO0Fxfa+8NjjE2LETRF7AWnOJyvDADtDiH1M88sxjAJy8+i0/35tioddUm6DTp87J9PgVvhw9TsN6lGspbhxuAsQYxFiU61J0E/xGhSTUnLl+ntu1Cpcv/YC+/++s/DZ+ke+OnaBhPfLlHl4tJu/08HfFmKzA5CUoRZmkVA8Mknd6xJnl8+eO05qZZn5hEW3FkmU5nSxFey4A2nNxqxHdqXkUGq1dTFrgxsGG2mpEUK/yZ/MOlBYFaABrhPdvnMeLQ+Lh3WTtLkG9QtBXIV/pka/0cCshXiUmX1knGqjTJuPcrSsY1yKARsBzFTPLLV749VOuzU1AI2bl7iJlmhEP9RPs3kUy26F7d4Gk3+P63ASvXv6ChXQNT3kAuA8H2qiE4Ahnbl7i6MA+PN/n66dfRymFdh2qB3bzwa3LNO90aeZtcMB3HErhAUiBABhNX6NCa3Wd1SDj/uI8z179BIC6E1I6glGWVAtWa6QwO1ZDP3QS9SDgO3SyDM/TDNZrRIFPtT+gUIb2Wgp2a6Ej19sCKQFHIBcLwOMDfUhhUChqlQDHVYSeR18cYq2l5jmIFRDBdRysv9GbFgWFAGmxQ2otCgDI7UZiL82JfZccQxWFtsKqyRFjtxRl1qJifxPi4VIJAmZbK1Ba1ikoERSKPCmJAw9fu6jSYgqLiKDrjTqHjj6JJDlpXiCyoSArClCQI6R5SbeXQuTheJp/llbwQofS14y+9DIjRw4rJVmbNE3ZN3RQhnfVOHSwj04rp5Mk1CKfjjHsiSMmm0tUfJe46lPmhm5pmO0kLDSnVRRFG78WhiGt5Tn18Tdf8fvkAvO9hKQoEQGdlbRWe4ijKRHaSc7R51/ks7ExVpfnVBRF/79HALf/mhBjDO8cf5d7MzNYEQShtMKewUEuXbzAyJHDO44awH9cfaFylidrhQAAAABJRU5ErkJggg==", "맹그로브나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADBklEQVR42mWUS28cRRSFv6ruru6enp5pP5LYEWCUBCxQlEisWbJgiYTEgi0LECwRCAEKQvyELHkoEuIhsXJ2iDUCfgAIZBxgJn6ECfZ4ZvrdVcWibWvGOburqzp16tx7StjykHkMh7sWY3jl5VfZ+2Nnobe8vsbdH7YwwMbG42K+J+aJ3n7nQ/v9p3e46Dpshi7HeblA1CDJHNieFrz01ut8/MkHIgiCRSLVuWCfR3ItiZnVNQdpweZyb4Fo+3BC4nk8veLz88GMnzDk2UicEb3/7i27/fkdQinJtWZWN3SVt0Ayq2q6yiOtGoS19JSHFjB46hpbW98i7w937S9ff8PVnkdWNejGkPiK//KS5UBRNJqsbniiF3GUl1wIFbkxTKqapUAR7e/z4N8R0hhDVjbkuvXuuGkIHEsgJYNJSqxc+r7H/WlGP1AIKQFwhCDwQJYF0oKLgMKR/CkUT8aGuFHsTjMix6E2hoO0IHIcOsol8T3+Pk7Z6EUsKcuOUExtBYArLHgGjmxN1yo8U7AeBaR1jZAOifIBGBcV2jSsRQG+1PwjYlwDVoIRIE/NXBc+QSdk3/XRyqc2lstdl0RB7MFK6KMNHBYVe9bnPNz5IvY9qDySuEPtKX48GrOqNY7yqLpdCCL6tLcbQACOAWHBtbTS5pFVDQDXV1fI6oZL3ZBhXjLTBuk60GhKwAesaBkl4qQ4wTNxh7HWTIB+oFCORApBXwgSwHfO3GhV2RNFWJB2UVEH6JxbSAAH8KzlNDgTQJ+abYHGmEcOJZ7L4FzWpBAYC/Mxd0xLIpOkz5XnbpAD07LG2FbeKM3xgUobcm0YNxptLeO6OZtSYWuizatcWrvYZq0oCh5bvWI3ow43V5eYFBW1McTKAyFohGU7zVgT7ZAPgawsuTdLGYx2RBiG7R4FQcDD2Z5474vb3H0wYlDkVCfPPcpLHCQPi5qJNQyLnGdffIGPPrvNaLYnwjB89D8C+PW3363Rmjdee5O/du6hrcERkmlVs3F5na+++5KbN66L857+D7P7ZTTQ8kRlAAAAAElFTkSuQmCC", "창백한 참나무 심재": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAADa0lEQVR42nWUzU9cZRTGf+97Z+6988Ew0KkzU7DFBqGRFoWWaFJC0qamMSb+Be5duHWlC2NTjdG0tqkxXbo3Me6axqYx0UIoKaWWQgWBAaTAMIMwM3fu3Lkfr4vBwvhxlic5v+c5T973COVsc7AK+U2lgoCrn37IVj6PHokD4NYsNKFz+fpNAt/nhWxWHJwTB0HffnNN3fnxFq+ePEH/yT6qjtskIoVgfjHH+Oh93nr7Hd59732hG0Yz6OK5QTXU08u5C+fRQmHmcmsM9fc2gcZGxzl9ZgDHqTP+4DG3797lzr2H4jnoxvUvVHl5jtfPnsV2HMqWQzxq4vs+nufh+T4IQSxiYlk2sViEw20JxiamWFha4dKVr5H5jQ01+2iKNy9ewHbq1L2Ajkya9XyRZNzEdurUHJeWWJSqVSWbTvHHRoHCTpnhNwahusN2oYD0lY/j1bGqNUKaxHHqSKEwhM/i6ibxsOBQMs6fu2UM0yQIfHRN0p6IUixuU7Zqe/khMAl4MD1POpPFMHTmc6tkshkOt7Vg2S7lik061UY6lWQht8bgQD9CCCbGJ1BCAyAEIIEnjyapWyVOneqj5/hR1vNFzLBGsr2VwHVYWl5DNyN0HX2RhadPmJqcIrfyDDMS2QcB9BzroKOzg/u//ExrshUtFGbgzGkAKiWPzkyK2ZlZ5qYfIoOgsU4sDoHfDDKjMfSwDkLQ2dXN4txTbv3wPQCxRBtV28b3XKQRRRKwW63RptWxAq0ZVC6VyALRsKTmerS0JkgfO47jeiSjBjPTv+I6NaTac4PCiMSw3L2w/wY5tUbjpVdeo1SxQAXEDB1ll5BS48iRDkJhAyEb2j4SNH3/1fM/FY1EAQjqDQGrUkHTJHpof+TZjtUMqlTK/wLFWttZXphH+fXnPU1KwlIwu7hIMmrgVPb/qWxpSfByb+9eTjsEQYD0Gi500wSgtpOnuLWJUgrPdQkZDbcqZBA/lCaTzSBj8bj44JMr4rdcjpnHk6AChGdTqtaoOw4AJU9jtVBsgDyPTFRjfbvI1sY2n9+4KeKJpAgB6LrBd7fHxOi9n9S1yx/R1d1LJmSBUri+wtAkupTYVpld26NvYJihkRGGR86L/7xHACtLC8rzfb768hK5+d8Bha9rhGseiVSKjz+7SnfPCfHPTP8CRveINPPWA9gAAAAASUVORK5CYII=", "꿀이 든 병": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAACK0lEQVR42pWUz08TQRiGn9kt6UIKpQg1ICIhpioSPHGFg8aDNlHiUaL/gRe9cjAaj+JBvfSgZ42JMTEmRo2/DmoaJcYi0WhJEVJsS7fbbkt3tx0PJVDCluKbTDL5ZuaZ+b73ywjWJcur1Csfi8rEvRkAlpIrWK0+wpHHon6P8HZtzt1Av3SvNFNJ7J8fNmKORyPVP0F4WBFuIA8uMkoORjKJFX0NgGXbVDQ/Sv8EjeQKypdssnWgQrFIpb2H3snphiDRqEbJvJTRRUl4WCHyaonvywVuTh1qWCOFZnp4Frnwsuk2V5BpK1Qdnb3iPYg4g3wl5MzyOW7I/wIlzRbplH4wpk7DaCcnu15wrnSbW88Su69RLN0qh3LnydlBotXrHLw/suXAjcEHTI4FmRwLClf785aKYamyr3CVuHMKY8XE82WaTFGwb0+VgK+WVTh9h3xsnEh+XNY/ZCO1NUdIfU0lYD0lXRlh1ehFnXtC2RF4fQr+ntoYLbyhvDzPu/ls8z6qV19HlbYj7RDSaoG51M4NmTVt4imLo29X2P/nDFlTkEHl8FAV2iU5u5tIfIZj+mlymmjsWko3iS1s3taiQIdWXV8sw2Jxd330Vy9uBang19bbJt0ctM3+C3e/yWviCgfEAgDzvxVmQ5fJdI5y/NPFhvZvAyXSa/LR849kdKPmpiUoeXuoqK34igkuTZ3A3+YR/jbPzt/IQLcmggMhKQK2SwKdDHS7VBr4B8wT8JrbcuVZAAAAAElFTkSuQmCC"};
+const mi=m=>MI[m]?`<img class="mi" src="${MI[m]}" alt="" width="20" height="20">`:'';
+const CATS=['전체','마나회복','공용','농부','어부','광부','목수','요리사','연금술사'];
+const MATS=[...new Set(P.flatMap(p=>p[4].map(m=>m[0])))];
+const groupOf=m=>m.endsWith('심재')?'나무 심재':/^(강화된|순수한)/.test(m)?'광물':'기타 재료';
+const GROUPS=['나무 심재','광물','기타 재료'];
+const KEY='potion-calc-v1';
+let S={q:{},p:{},h:{},f:'전체',sub:false};
+try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)S={...S,...v}}catch(e){}
+if(S.f==='기타')S.f='연금술사';if(S.p['꿀병']!=null&&S.p['꿀이 든 병']==null)S.p['꿀이 든 병']=S.p['꿀병'];delete S.p['꿀병'];S.h=S.h||{};
+S.sellU=S.sellU||S.sell||{};S.sellN=S.sellN||{};delete S.sell;
+S.pu=S.pu||{};S.pn=S.pn||{};
+for(const[k,o]of[['sellU','pu'],['sellN','pn']]){for(const n in S[k]){S[o][n]=S[o][n]||{};if(S[o][n]['일반']==null)S[o][n]['일반']=S[k][n]}delete S[k]}
+const GR=['일반','고급','희귀'],SK={u:'pu',n:'pn'};
+const gv=(k,n,g)=>+((S[SK[k]][n]||{})[g])||0;
+const hasG=(k,n)=>GR.some(g=>gv(k,n,g));
+S.cfg={lv:1,st:'',kn:0,pw:2,th:'',ev:false,up:true,man:false,mp:{},bs:{a:66.7,b:27.8,c:5.5,s2:0,s3:0,s4:0},...(S.cfg||{})};
+const C=S.cfg;C.bs={a:66.7,b:27.8,c:5.5,s2:0,s3:0,s4:0,...C.bs};
+const lerp=(pts,x)=>{let v=0;for(const[a,va]of pts)if(x>=a)v=va;return v};
+const TIME_P=[[1,.9],[10,41],[11,42.5],[21,45.5],[31,47]];
+const LOSS_P=[[1,.5],[10,.5],[11,1.5],[21,3],[31,6],[41,11],[51,13]];
+const UP_P=[[1,2.3],[10,2.6],[11,6.4],[21,13.9],[31,26.4],[41,45.2],[51,75.2]];
+const REF=[0,.03,.1,.22,.4,.62,.9,1.22,1.6,2.03,2.5,3.03,3.6,4.23,4.9,5.62,6.4,7.22,8.1,9.03,10];
+const THB=[0,2.6,3.9,5,5.9,6.7,7.5,8.2,8.9,9.6,10.2,10.8,11.4,11.9,12.5,13,13.5,14,14.5,15,34.2];
+const THV={일반:9,고급:13.5,희귀:18};
+function model(){
+  const lv=Math.max(1,Math.min(60,Math.floor(+C.lv||1)));
+  const stage=lv>=30?4:lv>=20?3:lv>=10?2:1,batch=[1,3,4,6][stage-1],maxSt=lv>=30?7:lv>=20?4:lv>=10?3:lv>=5?2:1;
+  const st=Math.max(1,Math.min(maxSt,Math.floor(+C.st||maxSt)));
+  const kn=+C.kn||0;
+  return{lv,stage,batch,maxSt,st,tRed:lerp(TIME_P,lv),loss:lerp(LOSS_P,lv),up:C.up?Math.min(90,lerp(UP_P,lv)+REF[kn]):0,ref:REF[kn],dem:Math.min(100,THB[kn]*(C.ev?1.2:1)),th:THV[C.th]||0};
+}
+const kOf=p=>Math.min(Math.max(0,Math.min(2,+C.pw||0)),p[4].filter(([m])=>m.endsWith('심재')||/^(강화된|순수한)/.test(m)).length);
+function odds(k,M){
+  if(C.man){const v=GR.map(g=>Math.max(0,+C.mp[g]||0)),t=v.reduce((a,b)=>a+b,0)||1;return v.map(x=>x/t*100)}
+  const B=C.bs,t0=(+B.a||0)+(+B.b||0)+(+B.c||0)||1;let n=(+B.a||0)/t0*100,g=(+B.b||0)/t0*100,r=(+B.c||0)/t0*100;
+  for(let s=2;s<=M.stage;s++){const x=Math.min(100,Math.max(0,+B['s'+s]||0))/100;r+=n*x;n-=n*x}
+  const u=M.up/100;[n,g,r]=[n*(1-u),g*(1-u)+n*u,r+g*u];
+  const add=Math.min(n+g,5*k+M.th),ng=n+g;if(ng>0){n-=add*n/ng;g-=add*g/ng;r+=add}
+  return[n,g,r];
+}
+function craft(p,M){
+  const k=kOf(p),o=odds(k,M),f=1+M.dem/100;
+  const val=key=>f*GR.reduce((s,g,i)=>s+o[i]/100*gv(key,p[0],g),0);
+  return{o,k,vu:val('u'),vn:val('n'),cost:unit(p)*(1-M.loss/100),t:(p[1]===0?30:56)*(1-M.tRed/100)*(1-Math.min(10,5*k)/100)};
+}
+const sv=(k,n)=>gv(k,n,'일반');
+const own=m=>Math.max(0,Math.floor(+S.h[m]||0));
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const fmt=n=>Math.round(n*100)/100===Math.round(n)?Math.round(n).toLocaleString('ko-KR'):(Math.round(n*100)/100).toLocaleString('ko-KR');
+S.self=S.self||{};
+const price=m=>S.self[m]?0:(+S.p[m]||0);
+const nop=m=>!S.self[m]&&!(+S.p[m]);
+const sw=(m,sub=S.sub)=>sub&&m.startsWith('강화된 ')?'순수한 '+m.slice(4):m;
+const unit=(p,sub=S.sub)=>p[4].reduce((s,[m,c])=>s+price(sw(m,sub))*c,0);
+const missing=p=>p[4].some(([m])=>nop(sw(m)));
+const $=id=>document.getElementById(id);
+
+const LVS=['전체',...[...new Set(P.map(p=>p[1]))].sort((a,b)=>a-b).map(String)];
+S.lvf=S.lvf||'전체';
+const lvc=$('lvchips');
+lvc.innerHTML=LVS.map(c=>`<button type="button" data-c="${c}" aria-pressed="${S.lvf===c}">${c==='전체'?'전체':'숙련도 '+c}</button>`).join('');
+lvc.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.lvf=b.dataset.c;for(const x of lvc.children)x.setAttribute('aria-pressed',x===b);save();renderList()});
+const chips=$('chips');
+chips.innerHTML=CATS.map(c=>`<button type="button" data-c="${c}" aria-pressed="${S.f===c}">${c}</button>`).join('');
+chips.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.f=b.dataset.c;for(const x of chips.children)x.setAttribute('aria-pressed',x===b);save();renderList()});
+
+function renderList(){
+  const shown=P.filter(p=>(S.f==='전체'||p[3]===S.f)&&(S.lvf==='전체'||p[1]<=+S.lvf)).length;
+  $('list').innerHTML=(shown?'':'<p class="empty">이 조건에 맞는 비약이 없어요.</p>')+P.map((p,i)=>(S.f!=='전체'&&p[3]!==S.f)||(S.lvf!=='전체'&&p[1]>+S.lvf)?'':`
+  <div class="pot" id="p${i}">
+    <h3><img class="ico" src="${IMG[i]}" alt="" width="36" height="36">${p[0]} <span class="lv">숙련도 ${p[1]}</span> <span class="fx">${p[2]}</span></h3>
+    <div class="mats">${p[4].map(([m0,c])=>{const m=sw(m0);return `<span${m!==m0?' class="swp"':''}>${mi(m)}${m} ×${c}</span>`}).join('')}</div>
+    <div class="cost" id="c${i}"></div>
+    <div class="gpt"><span></span>${GR.map(g=>`<span>${g}</span>`).join('')}${[['u','유저'],['n','상점']].map(([k,l])=>`<span style="text-align:left">${l}</span>${GR.map(g=>`<input type="number" min="0" step="any" inputmode="decimal" data-s="${i}" data-k="${k}" data-g="${g}" value="${(S[SK[k]][p[0]]||{})[g]??''}" placeholder="0" aria-label="${p[0]} ${l} ${g} 판매가">`).join('')}`).join('')}</div>
+    <div class="step">
+      <button type="button" data-i="${i}" data-d="-1" aria-label="${p[0]} 하나 빼기">−</button>
+      <input type="number" min="0" inputmode="numeric" id="q${i}" data-i="${i}" value="${S.q[p[0]]||0}" aria-label="${p[0]} 개수">
+      <button type="button" data-i="${i}" data-d="1" aria-label="${p[0]} 하나 더하기">+</button>
+    </div>
+  </div>`).join('');
+  update();
+}
+$('list').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;const p=P[b.dataset.i];S.q[p[0]]=Math.max(0,(S.q[p[0]]||0)+ +b.dataset.d);$('q'+b.dataset.i).value=S.q[p[0]];save();update()});
+$('list').addEventListener('input',e=>{const t=e.target;if(t.dataset.s){const k=P[t.dataset.s][0],o=S[SK[t.dataset.k]][k]=S[SK[t.dataset.k]][k]||{};if(t.value==='')delete o[t.dataset.g];else o[t.dataset.g]=+t.value;save();update();return}if(!t.dataset.i)return;S.q[P[t.dataset.i][0]]=Math.max(0,Math.floor(+t.value||0));save();update()});
+
+const pr=$('prices');
+pr.innerHTML=GROUPS.map(g=>`<div><h3>${g}</h3><div class="ph"><span></span><span>보유</span><span>단가</span><span>자체 수급</span></div>${MATS.filter(m=>groupOf(m)===g).map(m=>`<div class="pr${S.self[m]?' self':''}"><span>${mi(m)}${m}</span><input type="number" min="0" inputmode="numeric" data-h="${m}" value="${S.h[m]||''}" placeholder="0" aria-label="${m} 보유 수량"><input type="number" min="0" step="any" inputmode="decimal" data-m="${m}" value="${S.p[m]??''}" placeholder="0" aria-label="${m} 단가"${S.self[m]?' disabled':''}><label class="selfbox" title="자체 수급"><input type="checkbox" data-self="${m}"${S.self[m]?' checked':''} aria-label="${m} 자체 수급"></label></div>`).join('')}</div>`).join('');
+pr.addEventListener('change',e=>{const t=e.target;if(!t.dataset.self)return;const m=t.dataset.self;if(t.checked)S.self[m]=true;else delete S.self[m];const row=t.closest('.pr');row.classList.toggle('self',t.checked);row.querySelector('input[data-m]').disabled=t.checked;save();update()});
+pr.addEventListener('input',e=>{const t=e.target;if(t.dataset.h){if(t.value===''||+t.value<=0)delete S.h[t.dataset.h];else S.h[t.dataset.h]=Math.floor(+t.value);save();update();return}if(!t.dataset.m)return;if(t.value==='')delete S.p[t.dataset.m];else S.p[t.dataset.m]=+t.value;save();update()});
+
+function need(sub=S.sub){
+  const r={};
+  P.forEach(p=>{const q=S.q[p[0]]||0;if(q)p[4].forEach(([m,c])=>{m=sw(m,sub);r[m]=(r[m]||0)+c*q})});
+  return r;
+}
+const calc=sub=>{const n=need(sub),keys=MATS.filter(m=>n[m]);return{n,keys,total:keys.reduce((s,m)=>s+price(m)*Math.max(0,n[m]-own(m)),0),miss:keys.some(m=>nop(m)&&n[m]>own(m))}};
+function update(){
+  const M=model();renderCfg(M);
+  let revU=0,revN=0,noU=0,noN=0,full=0,ecost=0,count=0,time=0,maxT=0;const EX=[0,0,0];let exDem=0;
+  P.forEach((p,i)=>{
+    const q=S.q[p[0]]||0,cr=craft(p,M);count+=q;full+=unit(p)*q;
+    if(q){revU+=cr.vu*q;revN+=cr.vn*q;ecost+=cr.cost*q;time+=cr.t*q;maxT=Math.max(maxT,cr.t);cr.o.forEach((x,j)=>EX[j]+=x/100*q);exDem+=M.dem/100*q;if(!hasG('u',p[0]))noU++;if(!hasG('n',p[0]))noN++}
+    const el=$('c'+i);if(!el)return;
+    const pf1=x=>(Math.round(x*10)/10)+'%';
+    const pp=(k,v)=>{const d=v-cr.cost;return `${k} <b class="${d>=0?'pos':'neg'}">${fmt(d)}</b>`};
+    const pl=[hasG('u',p[0])?pp('유저',cr.vu):'',hasG('n',p[0])?pp('상점',cr.vn):''].filter(Boolean).join(' / ');
+    const gaps=k=>hasG(k,p[0])?GR.filter(g=>!gv(k,p[0],g)):[];
+    const gm=[['u','유저'],['n','상점']].map(([k,l])=>gaps(k).length?`${l} ${gaps(k).join('·')}`:'').filter(Boolean).join(', ');
+    el.innerHTML=`<span class="rowodds">가루 ${cr.k}종 적용 · 일반 ${pf1(cr.o[0])} · 고급 ${pf1(cr.o[1])} · 희귀 ${pf1(cr.o[2])}</span><br>${gm?`<span style="color:var(--warn)">${gm} 판매가가 비어 0으로 계산 중 · </span>`:''}개당 원가 <b>${fmt(cr.cost)}</b>${M.loss>0&&unit(p)?`<span style="color:var(--mute)"> (소진 시 ${fmt(unit(p))})</span>`:''}${pl?` · 기대 순수익 ${pl}`:''}${q?` · 소계 <b>${fmt(unit(p)*q)}</b>`:''}${missing(p)?` · <button type="button" class="gp" data-gp="${p[4].map(([m])=>sw(m)).find(m=>nop(m))}">단가 미입력 있음</button>`:''}`;
+    $('p'+i).classList.toggle('on',q>0);
+  });
+  const C=calc(S.sub),A=calc(!S.sub),n=C.n,keys=C.keys,total=C.total;
+  const buy=m=>Math.max(0,n[m]-own(m)),saved=full-total;
+  const hasEnh=P.some(p=>S.q[p[0]]&&p[4].some(([m])=>m.startsWith('강화된 ')));
+  const d=A.total-total;
+  const alt=hasEnh?`<div class="alt"><span>${S.sub?'강화된 광물을 그대로 쓰면':'순수한 광물로 바꿔 쓰면'}</span><b>${fmt(A.total)}</b><span class="${d>0?'up':d<0?'dn':''}">${d>0?'+':d<0?'−':'±'}${fmt(Math.abs(d))}</span>${A.miss?'<small>단가 미입력 재료는 0으로 계산</small>':''}</div>`:'';
+  $('saved').textContent=fmt(saved);
+  $('tot').textContent=fmt(total);$('cnt').textContent=count.toLocaleString('ko-KR');
+  const max=Math.max(1,...P.map(p=>unit(p)))*20;
+  const h=total?Math.max(14,Math.min(150,30+120*Math.log10(1+total)/Math.log10(1+max))):0;
+  const liq=$('liq');liq.setAttribute('y',178-h);liq.setAttribute('height',h);
+  const pU=revU-ecost,pN=revN-ecost;$('profitU').textContent=fmt(pU);$('profitN').textContent=fmt(pN);
+  const cls=v=>v>=0?'pos':'neg';
+  const autoH=Math.max(time/(M.st*M.batch),maxT)/3600,manH=(+S.th||0)+(+S.tmn||0)/60,hrs=manH>0?manH:autoH;
+  const tf=x=>{x=Math.round(x);const h=Math.floor(x/3600),m=Math.floor(x%3600/60),z=x%60;return [h?h+'시간':'',m?m+'분':'',z||!(h||m)?z+'초':''].filter(Boolean).join(' ')};
+  $('perhU').textContent=count&&hrs>0&&revU?fmt(pU/hrs):'–';$('perhN').textContent=count&&hrs>0&&revN?fmt(pN/hrs):'–';
+  $('tmhint').textContent=count?(manH>0?`직접 입력한 시간으로 계산해요. (설정 기준 예상 ${tf(autoH*3600)})`:`연금대 ${M.st}개 · 한 번에 ${M.batch}병 기준 예상 소요 시간: ${tf(autoH*3600)}. 다르면 직접 입력해 주세요.`):'';
+  const ex=GR.map((g,j)=>`${g} ${fmt(EX[j])}`).join(' · ')+(exDem?` · 축복 +${fmt(exDem)}`:'');
+  const row=(l,a,b,c='')=>`<tr class="${c}"><td>${l}</td><td class="n">${a}</td><td class="n">${b}</td></tr>`;
+  $('sum').innerHTML=count?`<p class="small" style="margin:0 0 8px">예상 결과: ${ex}</p><table class="cmp"><thead><tr><th></th><th class="n">유저판매</th><th class="n">상점판매</th></tr></thead><tbody>
+${row('기대 판매액',fmt(revU),fmt(revN))}
+${row('재료비 (전부 소진 시)',fmt(full),fmt(full))}
+${M.loss>0?row(`재료 손실 방지 ${fmt(M.loss)}%`,`<span class="pos">−${fmt(full-ecost)}</span>`,`<span class="pos">−${fmt(full-ecost)}</span>`):''}
+${row('기대 재료비',fmt(ecost),fmt(ecost))}
+${row('기대 순수익',`<span class="${cls(pU)}">${fmt(pU)}</span>`,`<span class="${cls(pN)}">${fmt(pN)}</span>`,'big')}
+${hrs>0?row('소요 시간',tf(hrs*3600),tf(hrs*3600))+row('시간당 수익',fmt(revU/hrs),fmt(revN/hrs))+row('시간당 순수익',`<span class="${cls(pU)}">${fmt(pU/hrs)}</span>`,`<span class="${cls(pN)}">${fmt(pN/hrs)}</span>`,'big'):''}
+${total<full?row('보유 재료 공짜로 치면',fmt(revU-total*(1-M.loss/100)),fmt(revN-total*(1-M.loss/100))):''}</tbody></table>
+${revU&&revN&&pU!==pN?`<p class="small"><b>${pU>pN?'유저판매':'상점판매'}</b>가 ${fmt(Math.abs(pU-pN))} 더 남아요.</p>`:''}${noU||noN?`<p class="small" style="color:var(--warn)">${[noU?`유저판매가 미입력 ${noU}종`:'',noN?`상점판매가 미입력 ${noN}종`:''].filter(Boolean).join(', ')}은 0으로 계산했어요.</p>`:''}`:'';
+  if(!keys.length){$('shop').innerHTML='<p class="empty">왼쪽에서 만들 비약의 개수를 늘리면 여기에 필요한 재료가 모입니다.</p>';return}
+  const miss=keys.filter(m=>nop(m)&&buy(m)).length;
+  $('shop').innerHTML=`<table class="stack"><thead><tr><th>재료</th><th class="n">필요</th><th class="n">보유</th><th class="n">구매</th><th class="n">단가</th><th class="n">금액</th></tr></thead><tbody>${
+    keys.map(m=>`<tr class="${buy(m)?'':'done'}"><td>${mi(m)}${m}</td><td class="n">${n[m].toLocaleString('ko-KR')}</td><td class="n">${own(m)?Math.min(own(m),n[m]).toLocaleString('ko-KR'):'–'}</td><td class="n"><b>${buy(m).toLocaleString('ko-KR')}</b></td><td class="n${!nop(m)||!buy(m)?'':' miss'}">${S.self[m]?'<span class="selfc">자체 수급</span>':price(m)?fmt(price(m)):`<button type="button" class="gp" data-gp="${m}">미입력</button>`}</td><td class="n">${fmt(price(m)*buy(m))}</td></tr>`).join('')
+  }</tbody><tfoot><tr><td colspan="5">구매 합계</td><td class="n">${fmt(total)}</td></tr></tfoot></table>${alt}${saved>0?`<p class="small">보유 재료로 ${fmt(saved)} 아꼈어요 (전부 사면 ${fmt(full)}).</p>`:''}${miss?`<p class="small" style="color:var(--warn)">단가가 비어 있는 재료 ${miss}종은 0으로 계산했어요.</p>`:''}`;
+}
+
+$('copy').addEventListener('click',async e=>{
+  const n=need(),keys=MATS.filter(m=>n[m]);if(!keys.length)return;
+  const made=P.filter(p=>S.q[p[0]]).map(p=>`${p[0]} ×${S.q[p[0]]}`).join(', ');
+  const txt=`[제작] ${made}\n`+keys.filter(m=>n[m]>own(m)).map(m=>`${m} ${n[m]-own(m)}개 구매 = ${fmt(price(m)*(n[m]-own(m)))}`).join('\n')+`\n구매 합계 ${$('tot').textContent}`;
+  try{await navigator.clipboard.writeText(txt);e.target.textContent='복사됨'}catch(err){e.target.textContent='복사 실패'}
+  setTimeout(()=>e.target.textContent='목록 복사',1500);
+});
+$('sub').checked=!!S.sub;
+$('sub').addEventListener('change',e=>{S.sub=e.target.checked;save();renderList()});
+$('clearQ').addEventListener('click',()=>{S.q={};save();renderList()});
+let armed=false;
+$('clearP').addEventListener('click',e=>{
+  if(!armed){armed=true;e.target.textContent='한 번 더 누르면 지워집니다';setTimeout(()=>{armed=false;e.target.textContent='단가 전부 지우기'},2500);return}
+  armed=false;S.p={};save();for(const i of pr.querySelectorAll('input[data-m]'))i.value='';e.target.textContent='단가 전부 지우기';update();
+});
+$('clearH').addEventListener('click',()=>{S.h={};save();for(const i of pr.querySelectorAll('input[data-h]'))i.value='';update()});
+const stock=$('stock'),jb=$('jump');
+const go=el=>el.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+let atStock=false;
+if(window.IntersectionObserver)new IntersectionObserver(es=>{atStock=es[0].isIntersecting;jb.textContent=atStock?'↑ 계산기로':'보유 수량·단가 입력 ↓';jb.classList.toggle('up',atStock)},{threshold:.15}).observe(stock);
+jb.addEventListener('click',()=>atStock?go(document.body):go(stock));
+for(const b of document.querySelectorAll('[data-go=stock]'))b.addEventListener('click',()=>go(stock));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-gp]');if(!b)return;
+  const inp=[...pr.querySelectorAll('input[data-m]')].find(x=>x.dataset.m===b.dataset.gp);if(!inp)return;
+  const row=inp.closest('.pr');
+  inp.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  setTimeout(()=>inp.focus({preventScroll:true}),350);
+  for(const r of pr.querySelectorAll('.pr.hl'))r.classList.remove('hl');row.classList.add('hl');setTimeout(()=>row.classList.remove('hl'),2400);
+});
+$('cKn').innerHTML=REF.map((v,i)=>`<option value="${i}">+${i}${i?` (축복 ${THB[i]}% · 정제 +${v})`:''}</option>`).join('');
+const CF={cLv:'lv',cSt:'st',cKn:'kn',cPw:'pw',cTh:'th'},CB={cEv:'ev',cUp:'up',cMan:'man'};
+for(const id in CF){const el=$(id);el.value=C[CF[id]]??'';el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{C[CF[id]]=el.value;save();update()})}
+for(const id in CB){const el=$(id);el.checked=!!C[CB[id]];el.addEventListener('change',()=>{C[CB[id]]=el.checked;save();update()})}
+for(const el of document.querySelectorAll('[data-mp]')){el.value=C.mp[el.dataset.mp]??'';el.addEventListener('input',()=>{C.mp[el.dataset.mp]=el.value;save();update()})}
+for(const el of document.querySelectorAll('[data-bs]')){el.value=C.bs[el.dataset.bs]??'';el.addEventListener('input',()=>{C.bs[el.dataset.bs]=el.value;save();update()})}
+for(const id of ['th','tmn']){const el=$(id);el.value=S[id]??'';el.addEventListener('input',()=>{if(el.value===''||+el.value<0)delete S[id];else S[id]=+el.value;save();update()})}
+const cfgDet=$('cfgDet');cfgDet.open=S.cfgOpen!==false;cfgDet.addEventListener('toggle',()=>{S.cfgOpen=cfgDet.open;save()});
+function renderCfg(M){
+  $('cfgMini').textContent=`숙련도 ${M.lv} · ${M.stage}차 · 가루 ${Math.min(2,+C.pw||0)}종 · 막자 +${+C.kn||0}${C.th?' · 토트 '+C.th:''}${C.man?' · 확률 직접 입력':''}`;
+  $('manBox').hidden=!C.man;$('cSt').max=M.maxSt;$('cSt').placeholder=`최대 ${M.maxSt}`;
+  $('stats').innerHTML=[`${M.stage}차`,`연금대 최대 <b>${M.maxSt}</b>개`,`한 번에 <b>${M.batch}</b>병`,`제작 시간 −<b>${fmt(M.tRed)}</b>%`,`재료 손실 방지 <b>${fmt(M.loss)}</b>%`,C.up&&!C.man?`등급 상승 <b>${fmt(M.up)}</b>%${M.ref?` (정제 +${M.ref} 포함)`:''}`:'',`토트의 축복 <b>${fmt(M.dem)}</b>%`].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
+  const k=Math.min(2,+C.pw||0),o=odds(k,M),pf=p=>(Math.round(p*10)/10).toLocaleString('ko-KR')+'%';
+  const vw=o.map(p=>p>0?Math.max(p,11):0),vt=vw.reduce((x,y)=>x+y,0)||1;
+  $('odds').innerHTML=o.map((p,j)=>p>0?`<div class="o${j+1}" style="width:${vw[j]/vt*100}%" title="${GR[j]} ${pf(p)}">${p>=9?pf(p):`<small>${pf(p)}</small>`}</div>`:'').join('');
+  $('olg').innerHTML=o.map((p,j)=>`<span><i class="o${j+1}"></i>${GR[j]} <b>${pf(p)}</b></span>`).join('');
+  $('oddsCap').textContent=C.man?'직접 입력한 확률이에요.':`가루 ${k}종 기준 확률이에요. 기본 확률과 차수별 희귀 전환은 임시값이라 아래 '기본값 조정'에서 바꿀 수 있어요.`;
+}
+const impMsg=$('impMsg');
+const setMsg=(t,c)=>{impMsg.textContent=t;impMsg.className='small'+(c?' '+c:'')};
+function applyShop(){
+  const SH=S.shop;if(!SH)return;
+  const inFile=new Set(Object.values(SH.prices).flatMap(Object.keys));
+  const hit=P.filter(p=>inFile.has(p[0])),miss=P.filter(p=>!inFile.has(p[0])).map(p=>p[0]);
+  hit.forEach(p=>{const o=S.pn[p[0]]={};GR.forEach(g=>{const v=(SH.prices[g]||{})[p[0]];if(v!=null)o[g]=v})});save();renderList();
+  setMsg(`${SH.at?SH.at+' 기준 · ':''}일반·고급·희귀 시세를 ${hit.length}종에 적용했어요.${miss.length?' 파일에 없는 비약: '+miss.join(', '):''}${SH.next?' · 다음 시세 변동 '+SH.next:''}`,hit.length?'ok':'err');
+}
+if(S.shop&&!S.shopAll){S.shopAll=1;applyShop()}
+let xlsxP=null;
+const loadXLSX=()=>xlsxP||(xlsxP=new Promise((res,rej)=>{if(window.XLSX)return res();const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=res;sc.onerror=()=>{xlsxP=null;rej(new Error('lib'))};document.head.appendChild(sc)}));
+$('shopFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;setMsg('파일을 읽는 중…');
+  try{
+    await loadXLSX();
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const names=new Set(P.map(p=>p[0])),prices={},grades=['일반','고급','희귀'];let at='',next='';
+    for(const sn of wb.SheetNames){
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''});
+      const hi=rows.findIndex(r=>r.some(c=>String(c).trim()==='현재 판매가'));
+      if(hi<0){const r=rows.find(r=>String(r[0]).includes('연금술'));if(r){const k=rows[0].findIndex(c=>String(c).includes('다음'));if(k>=0)next=String(r[k])}continue}
+      const t=rows.slice(0,hi).flat().map(String).join(' ').match(/기준 시각\s*([0-9-]+\s+[0-9]{1,2}:[0-9]{2})/);if(t)at=t[1];
+      const H=rows[hi].map(c=>String(c).trim()),ci=k=>H.indexOf(k);
+      const cP=ci('현재 판매가'),cB=ci('묶음'),cI=ci('아이템'),cG=ci('등급');
+      for(const r of rows.slice(hi+1)){
+        let n=cB>=0?String(r[cB]).trim():'';
+        if(!names.has(n)&&cI>=0)n=[...names].find(x=>String(r[cI]).includes(x))||n;
+        if(!names.has(n))continue;
+        const g=cG>=0&&grades.includes(String(r[cG]).trim())?String(r[cG]).trim():'일반',v=Number(r[cP]);
+        if(!isFinite(v))continue;(prices[g]=prices[g]||{})[n]=v;
+      }
+    }
+    if(!Object.keys(prices).length){setMsg('이 파일에서 비약 시세를 찾지 못했어요. \'아이템\'·\'현재 판매가\' 열이 있는 시세 파일인지 확인해 주세요.','err');return}
+    S.shop={prices,at,next};S.shopAll=1;applyShop();
+  }catch(err){setMsg(err.message==='lib'?'엑셀을 읽는 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.':'파일을 읽지 못했어요. 시세 엑셀 파일이 맞는지 확인해 주세요.','err')}
+  e.target.value='';
+});
+renderList();
+}
+</script>
+</body>
+</html>
