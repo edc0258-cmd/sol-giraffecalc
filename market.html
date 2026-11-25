@@ -102,7 +102,17 @@ textarea{padding:8px 10px;min-height:60px;resize:vertical}
 .frows{display:grid;gap:8px}
 .frow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;gap:6px;align-items:center;padding-bottom:8px;border-bottom:1px dashed var(--line)}
 .frow select,.frow input{min-height:40px;padding:0 8px;font-size:15px}
-.frow [data-f=item]{grid-column:1;grid-row:1}.frow [data-f=unit]{grid-column:2;grid-row:1}.frow button{grid-column:3;grid-row:1;min-height:40px;padding:0 12px}
+.frow [data-f=item]{grid-column:1;grid-row:1}
+.cb{position:relative}
+.cb .cbi{width:100%;min-height:40px;padding:0 8px;font-size:15px}
+.cb .cbi.bad{border-color:var(--warn);box-shadow:0 0 0 2px light-dark(#f6d5cc,#4a2318)}
+.cbl{position:absolute;z-index:30;left:0;top:calc(100% + 4px);width:max(100%,220px);max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 24px #0003;padding:4px}
+.cbo{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:15px}
+.cbo .ic{width:22px;height:22px;font-size:11px}
+.cbo small{margin-left:auto;color:var(--mute);font-size:12px}
+.cbo.on,.cbo:hover{background:var(--card)}
+.cbn{padding:8px;color:var(--warn);font-size:14px}
+.cbl:has(.cbn){pointer-events:none}.frow [data-f=unit]{grid-column:2;grid-row:1}.frow button{grid-column:3;grid-row:1;min-height:40px;padding:0 12px}
 .frow [data-f=qty]{grid-column:1;grid-row:2}.frow [data-f=price]{grid-column:2/4;grid-row:2}
 .hf{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:6px 0 10px}
 .hf label{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute);flex-wrap:wrap}
@@ -249,7 +259,11 @@ const isCook=()=>I().roles.includes('요리사');
 const sellJobs=()=>isCook()?[]:['농부','어부'].filter(j=>I().roles.includes(j));
 const per=l=>+l.price/UNITS[l.unit];
 const qtyTxt=(q,u)=>`${fmt(q)}${u==='낱개'?'개':u}${u==='낱개'?'':` (${fmt(q*UNITS[u])}개)`}`;
-const unitPrice=(p,u)=>`${u==='낱개'?'개':u}당 <b>${fmt(+p)}</b>`;
+// 가격: 서버에는 단위당 가격으로 저장해요. 화면에서는 낱개·세트는 개당, 셜커는 셜커당으로 적고 보여줘요.
+const priceLabel=u=>u==='셜커'?'셜커당':'개당';
+const shownPrice=(p,u)=>u==='셜커'?+p:+p/UNITS[u];
+const toStored=(v,u)=>u==='셜커'?+v:+v*UNITS[u];
+const unitPrice=(p,u)=>`${priceLabel(u)} <b>${fmt(shownPrice(p,u))}</b>`;
 if(!sb)$('setup').innerHTML='<div class="notice"><b>아직 데이터베이스가 연결되지 않았어요.</b> config.js에 Supabase 프로젝트 주소와 키를 넣으면 글을 올리고 볼 수 있어요.</div>';
 
 let gateOk=true;
@@ -289,7 +303,7 @@ function lineRow(p,l,focus){
   return `<div class="ln${focus===false?' dim':''}${focus?' hit':''}">
     ${icon(l.item)}
     <div class="li"><b>${esc(l.item)}</b><span class="meta">${left>0?`남은 ${qtyTxt(left,l.unit)}`:'<span class="so">남은 수량 없음</span>'}${l.qty_total!==left?` · 처음 ${fmt(l.qty_total)}${l.unit==='낱개'?'개':esc(l.unit)}`:''}</span>${(+l.qty_pending||0)>0?`<span class="pd">거래 대기 ${qtyTxt(+l.qty_pending,l.unit)}</span>`:''}</div>
-    <div class="lp">${unitPrice(l.price,l.unit)}${l.unit!=='낱개'?`<span>개당 ${fmt(per(l))}</span>`:''}</div>
+    <div class="lp">${unitPrice(l.price,l.unit)}${l.unit==='셜커'?`<span>개당 ${fmt(per(l))}</span>`:l.unit==='세트'?`<span>세트당 ${fmt(+l.price)}</span>`:''}</div>
     ${buy?`<div class="lb">${buy}</div>`:''}
     ${pend.length?`<div class="lw">${pend.map(t=>`<span>${esc(t.buyer_name||'요리사')}${nickCopy(t.buyer_name)} · ${qtyTxt(t.qty,t.unit)} 대기 ${ago(t.reserved_at)} ${btn('cancel',t.id,'대기 취소','ghost')}</span>`).join('')}</div>`:''}
   </div>`;
@@ -326,7 +340,7 @@ function tradeCard(t){
   return `<div class="it tr">
     ${icon(t.item)}
     <div><div class="nm"><span class="tag">거래 대기</span>${esc(t.item)} ${qtyTxt(t.qty,t.unit)}</div><div class="meta">${ago(t.reserved_at)} 대기 걸음</div></div>
-    <div class="pr"><b>${fmt(t.price*t.qty)}</b><span>${t.unit==='낱개'?'개':esc(t.unit)}당 ${fmt(+t.price)}</span></div>
+    <div class="pr"><b>${fmt(t.price*t.qty)}</b><span>${priceLabel(t.unit)} ${fmt(shownPrice(t.price,t.unit))}</span></div>
     <div class="who"><span>판매자 마크 <span class="mc">${esc(t.seller_name||'')}</span>${nickCopy(t.seller_name)}</span></div>
     <div class="own">${btn('complete',t.id,'거래 완료')}${btn('cancel',t.id,'대기 취소','ghost')}</div>
   </div>`;
@@ -356,7 +370,7 @@ function renderMine(){
   const total=L.reduce((a,x)=>a+x.t.price*x.t.qty,0),people=new Set(L.map(x=>x.who)).size;
   $('hSum').innerHTML=`<span>${kind}<b>${L.length}건</b></span><span>${kind} 금액<b>${fmt(total)}</b></span><span>거래한 ${other}<b>${people}명</b></span>`;
   $('hist').innerHTML=!all.length?`<p class="empty">아직 거래 완료된 ${kind} 내역이 없어요.</p>`:!L.length?'<p class="empty">조건에 맞는 거래가 없어요. 기간이나 이름을 바꿔 보세요.</p>':
-    `<table class="ht"><thead><tr><th>거래일</th><th>아이템</th><th class="n">수량</th><th class="n">단위당</th><th class="n">총액</th><th>${other}</th></tr></thead><tbody>${L.map(x=>`<tr><td class="d">${dshow(x.t.done_at)}</td><td class="i">${esc(x.t.item)}</td><td class="n q">${qtyTxt(x.t.qty,x.t.unit)}</td><td class="n u">${fmt(+x.t.price)}</td><td class="n t">${fmt(x.t.price*x.t.qty)}</td><td class="w"><span class="wl">${other} </span><b>${hl(x.who,H.who.trim())}</b>${nickCopy(x.who)}</td></tr>`).join('')}</tbody></table>`;
+    `<table class="ht"><thead><tr><th>거래일</th><th>아이템</th><th class="n">수량</th><th class="n">가격</th><th class="n">총액</th><th>${other}</th></tr></thead><tbody>${L.map(x=>`<tr><td class="d">${dshow(x.t.done_at)}</td><td class="i">${esc(x.t.item)}</td><td class="n q">${qtyTxt(x.t.qty,x.t.unit)}</td><td class="n u">${priceLabel(x.t.unit)} ${fmt(shownPrice(x.t.price,x.t.unit))}</td><td class="n t">${fmt(x.t.price*x.t.qty)}</td><td class="w"><span class="wl">${other} </span><b>${hl(x.who,H.who.trim())}</b>${nickCopy(x.who)}</td></tr>`).join('')}</tbody></table>`;
   for(const b of $('hQuick').querySelectorAll('[data-q]'))if(b.dataset.q!=='x')b.setAttribute('aria-pressed',b.dataset.q===H.q);
 }
 $('hFrom').addEventListener('input',e=>{H.from=e.target.value;H.q='';renderMine()});
@@ -387,12 +401,12 @@ function renderForm(){
   if(!rowsF.length)rowsF=[{item:okItems.has(V.item)?V.item:'',unit:'세트',qty:'',price:''}];
   const opts=sel=>`<option value="">아이템</option>${G.map(([g,l])=>`<optgroup label="${g}">${l.map(m=>`<option${m===sel?' selected':''}>${m}</option>`).join('')}</optgroup>`).join('')}`;
   el.innerHTML=`<form class="form" id="post">
-    <p class="small" style="margin:0">${V.job} 권한으로 ${V.job==='농부'?'작물':'물고기'}을 올릴 수 있어요. 품목마다 단위와 단위당 가격을 정해요.</p>
+    <p class="small" style="margin:0">${V.job} 권한으로 ${V.job==='농부'?'작물':'물고기'}을 올릴 수 있어요. 품목마다 단위를 고르고, 가격은 낱개·세트는 <b>개당</b>, 셜커는 <b>셜커당</b>으로 적어요.</p>
     <div class="frows" id="frows">${rowsF.map((r,i)=>`<div class="frow" data-i="${i}">
-      <select data-f="item" aria-label="아이템">${opts(r.item)}</select>
+      <div class="cb" data-f="item"><input type="text" class="cbi${r.bad?' bad':''}" value="${esc(r.item||r.q||'')}" placeholder="아이템 검색 (예: 양파, ㅇㅍ)" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-label="아이템"><div class="cbl" role="listbox" hidden></div></div>
       <select data-f="unit" aria-label="단위">${UN.map(u=>`<option${u===r.unit?' selected':''}>${u}</option>`).join('')}</select>
       <input type="number" data-f="qty" min="1" max="100000" inputmode="numeric" placeholder="수량" value="${esc(r.qty)}" aria-label="수량">
-      <input type="number" data-f="price" min="0" step="any" inputmode="decimal" placeholder="${r.unit==='낱개'?'개':esc(r.unit)}당 가격" value="${esc(r.price)}" aria-label="단위당 가격">
+      <input type="number" data-f="price" min="0" step="any" inputmode="decimal" placeholder="${priceLabel(r.unit)} 가격" value="${esc(r.price)}" aria-label="가격">
       <button type="button" class="ghost sm" data-rm="${i}" aria-label="이 품목 빼기"${rowsF.length<2?' disabled':''}>×</button>
     </div>`).join('')}</div>
     <button type="button" class="ghost sm" id="fAdd"${rowsF.length>=10?' disabled':''}>+ 품목 추가</button>
@@ -402,20 +416,45 @@ function renderForm(){
     <button type="submit" id="fBtn">올리기</button>
     <p class="small err" id="fErr" role="alert"></p>
   </form>`;
-  const sum=()=>{const v=rowsF.filter(r=>r.item&&+r.qty>0&&r.price!=='');$('fSum').textContent=v.length?`품목 ${v.length}개 · 전부 팔리면 ${fmt(v.reduce((a,r)=>a+r.qty*r.price,0))}`:''};sum();
-  $('frows').oninput=$('frows').onchange=e=>{const t=e.target,row=t.closest('.frow');if(!row||!t.dataset.f)return;const r=rowsF[+row.dataset.i];r[t.dataset.f]=t.value;if(t.dataset.f==='unit')row.querySelector('[data-f=price]').placeholder=(t.value==='낱개'?'개':t.value)+'당 가격';sum()};
+  const sum=()=>{const v=rowsF.filter(r=>r.item&&+r.qty>0&&r.price!=='');$('fSum').textContent=v.length?`품목 ${v.length}개 · 전부 팔리면 ${fmt(v.reduce((a,r)=>a+r.qty*toStored(r.price,r.unit),0))}`:''};sum();
+  // 아이템 검색 칸: 이름 일부나 초성으로 찾고, 목록에 있는 아이템만 고를 수 있어요.
+  const ALL=G.flatMap(([g,l])=>l.map(m=>[m,g]));
+  const CHO='ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  const cho=w=>[...w].map(c=>{const k=c.charCodeAt(0)-0xAC00;return k>=0&&k<11172?CHO[Math.floor(k/588)]:c}).join('');
+  const find=q=>{q=q.trim();if(!q)return ALL;return ALL.filter(([m])=>m.includes(q)||cho(m).includes(q))};
+  const cbOpen=(cb,q)=>{const L=find(q),box=cb.querySelector('.cbl'),inp=cb.querySelector('input');cb._L=L;const cur=L.findIndex(([m])=>m===inp.value.trim());cb._a=L.length?Math.max(0,cur):-1;
+    box.innerHTML=L.length?L.map(([m,g],i)=>`<div class="cbo${i===cb._a?' on':''}" role="option" data-m="${esc(m)}">${icon(m)}<span>${esc(m)}</span><small>${g}</small></div>`).join(''):'<div class="cbn">목록에 없는 아이템이에요</div>';
+    box.hidden=false;inp.setAttribute('aria-expanded','true')};
+  const cbClose=cb=>{const box=cb.querySelector('.cbl');box.hidden=true;cb.querySelector('input').setAttribute('aria-expanded','false')};
+  const cbPick=(cb,m)=>{const row=cb.closest('.frow'),r=rowsF[+row.dataset.i],inp=cb.querySelector('input');r.item=m;r.q='';r.bad=false;inp.value=m;inp.classList.remove('bad');cbClose(cb);sum();const q=row.querySelector('[data-f=qty]');if(q&&!q.value)q.focus()};
+  const cbMove=(cb,d)=>{if(!cb._L||!cb._L.length)return;cb._a=(cb._a+d+cb._L.length)%cb._L.length;const os=cb.querySelectorAll('.cbo');os.forEach((o,i)=>o.classList.toggle('on',i===cb._a));os[cb._a].scrollIntoView({block:'nearest'})};
+  $('frows').addEventListener('focusin',e=>{const inp=e.target.closest('.cbi');if(inp){const cb=inp.parentElement;cbOpen(cb,okItems.has(inp.value)?'':inp.value);const on=cb.querySelector('.cbo.on');if(on)on.scrollIntoView({block:'nearest'})}});
+  $('frows').addEventListener('keydown',e=>{const inp=e.target.closest('.cbi');if(!inp)return;const cb=inp.parentElement;
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(cb.querySelector('.cbl').hidden)cbOpen(cb,inp.value);cbMove(cb,e.key==='ArrowDown'?1:-1)}
+    else if(e.key==='Enter'){e.preventDefault();if(cb._L&&cb._a>=0&&!cb.querySelector('.cbl').hidden)cbPick(cb,cb._L[cb._a][0])}
+    else if(e.key==='Escape')cbClose(cb)});
+  $('frows').addEventListener('mousedown',e=>{const o=e.target.closest('.cbo');if(!o)return;e.preventDefault();cbPick(o.closest('.cb'),o.dataset.m)});
+  $('frows').addEventListener('focusout',e=>{const inp=e.target.closest('.cbi');if(!inp)return;const cb=inp.parentElement;setTimeout(()=>{if(cb.contains(document.activeElement))return;cbClose(cb);
+    const row=cb.closest('.frow');if(!row)return;const r=rowsF[+row.dataset.i],v=inp.value.trim();
+    if(!v){r.item='';r.q='';r.bad=false;inp.classList.remove('bad')}
+    else if(okItems.has(v))cbPick(cb,v);
+    else{const L=find(v);if(L.length===1)cbPick(cb,L[0][0]);else{r.item='';r.q=v;r.bad=true;inp.classList.add('bad')}}
+    sum()},120)});
+  $('frows').oninput=$('frows').onchange=e=>{const t=e.target,row=t.closest('.frow');if(!row)return;
+    if(t.classList.contains('cbi')){const r=rowsF[+row.dataset.i],v=t.value.trim();r.item=okItems.has(v)?v:'';r.q=t.value;r.bad=false;t.classList.remove('bad');cbOpen(t.parentElement,t.value);sum();return}
+    if(!t.dataset.f)return;const r=rowsF[+row.dataset.i];r[t.dataset.f]=t.value;if(t.dataset.f==='unit')row.querySelector('[data-f=price]').placeholder=priceLabel(t.value)+' 가격';sum()};
   $('frows').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;rowsF.splice(+b.dataset.rm,1);renderForm()};
-  $('fAdd').onclick=()=>{rowsF.push({item:'',unit:'세트',qty:'',price:''});renderForm()};
+  $('fAdd').onclick=()=>{rowsF.push({item:'',unit:'세트',qty:'',price:''});renderForm();const ins=document.querySelectorAll('.frow .cbi');if(ins.length)ins[ins.length-1].focus()};
   $('fNote').oninput=e=>{P.noteDraft=e.target.value;saveP()};
   $('post').onsubmit=async e=>{
     e.preventDefault();$('fErr').textContent='';
     const items=[];
     for(const r of rowsF){
-      if(!r.item&&!r.qty&&!r.price)continue;
-      if(!okItems.has(r.item))return $('fErr').textContent='아이템을 골라 주세요.';
+      if(!r.item&&!(r.q||'').trim()&&!r.qty&&!r.price)continue;
+      if(!okItems.has(r.item))return $('fErr').textContent=r.q?`‘${r.q.trim()}’은(는) 목록에 없는 아이템이에요. 목록에서 골라 주세요.`:'아이템을 골라 주세요.';
       const q=Math.floor(+r.qty);if(!(q>=1))return $('fErr').textContent=`${r.item} 수량을 1 이상으로 넣어 주세요.`;
       if(r.price===''||!(+r.price>=0))return $('fErr').textContent=`${r.item} 가격을 넣어 주세요.`;
-      items.push({item:r.item,unit:r.unit,qty:q,price:+r.price});
+      items.push({item:r.item,unit:r.unit,qty:q,price:toStored(r.price,r.unit)});
     }
     if(!items.length)return $('fErr').textContent='품목을 하나 이상 넣어 주세요.';
     if(new Set(items.map(x=>x.item)).size!==items.length)return $('fErr').textContent='같은 아이템을 한 글에 두 번 넣을 수 없어요.';
