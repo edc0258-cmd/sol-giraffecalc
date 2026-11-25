@@ -1,4 +1,4 @@
-// 기린서버 생활 계산기 — 공통 로그인·권한 처리 (by.진솔)
+// 기린서버 생활 계산기 — 공통 로그인·권한 처리
 (()=>{
   if(window.Auth&&window.Auth.__v){const n=()=>window.Auth.nav();document.readyState==='loading'?document.addEventListener('DOMContentLoaded',n,{once:true}):n();return}
   const cfg=window.SB_CONFIG||{};
@@ -39,11 +39,19 @@
 .agate p{margin:0 0 16px;color:light-dark(#625c6b,#a59fae)}
 .agate .id{display:inline-flex;gap:8px;align-items:center;background:light-dark(#fff,#121017);border:1px solid light-dark(#ddd8e2,#302b39);border-radius:10px;padding:6px 6px 6px 12px;font-weight:700;margin-bottom:12px}
 .agate button{font:700 15px "Noto Sans KR",sans-serif;min-height:42px;padding:0 16px;border-radius:10px;border:0;cursor:pointer;background:#5865F2;color:#fff}
+.by-sig{clear:both;margin:0;padding:20px max(4vw,16px) 22px;text-align:right;font:500 13px/1.4 "Noto Sans KR",system-ui,sans-serif;color:light-dark(#8a8494,#8d879a)}
 .agate button.cp{min-height:32px;padding:0 10px;font-size:13px;background:transparent;color:inherit;border:1px solid currentColor}`;
   function injectCss(){if(document.getElementById('auth-css'))return;const s=document.createElement('style');s.id='auth-css';s.textContent=css;document.head.appendChild(s)}
 
+  // 서명은 모든 페이지 맨 밑 오른쪽에 하나만 둬요.
+  function sig(){
+    if(!document.body)return;
+    let e=document.querySelector('.by-sig');
+    if(!e){e=document.createElement('p');e.className='by-sig';e.textContent='by.진솔'}
+    if(document.body.lastElementChild!==e)document.body.appendChild(e);
+  }
   function nav(){
-    injectCss();
+    injectCss();sig();
     for(const a of document.querySelectorAll('.sitenav a[data-need]'))a.classList.toggle('ok',can(a.dataset.need));
     const box=document.querySelector('.sitenav .in');if(!box||!sb)return;
     let w=box.querySelector('.sn-auth');if(!w){w=document.createElement('span');w.className='sn-auth';box.appendChild(w)}
