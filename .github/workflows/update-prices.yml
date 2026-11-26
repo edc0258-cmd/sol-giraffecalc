@@ -1,0 +1,52 @@
+# 기린서버 요리·연금술 시세(https://giraffemc.com/api/prices/xlsx)를
+# 시세가 바뀌는 0·3·6·9·12·15·18·21시(한국 시간) 직후에 받아서
+# 이 저장소의 'prices' 브랜치에 prices.xlsx로 올려 둬요.
+# 요리·연금술 계산기가 이 파일을 읽어 판매가를 자동으로 바꿔요.
+# (main 브랜치와 사이트 파일은 건드리지 않아요. prices 브랜치는 항상 최신 파일 하나만 남겨요.)
+name: 시세 자동 갱신
+
+on:
+  schedule:
+    - cron: '11,41 */3 * * *'   # 3시간마다 11분·41분 (늦게 실행될 때를 대비해 두 번 확인)
+  workflow_dispatch:            # Actions 탭에서 'Run workflow'로 바로 실행해 볼 수 있어요
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 시세 파일 받기
+        run: |
+          curl -sSfL --retry 3 --retry-delay 20 -m 60 -A "Mozilla/5.0 (giraffe-calc price sync)" \
+            -o new.xlsx "https://giraffemc.com/api/prices/xlsx"
+          if [ "$(head -c 2 new.xlsx)" != "PK" ]; then
+            echo "받은 파일이 엑셀이 아니에요:"; head -c 300 new.xlsx; echo; exit 1
+          fi
+          ls -l new.xlsx
+      - name: 바뀌었으면 올리기
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          sig(){ unzip -p "$1" 'xl/worksheets/*.xml' 'xl/sharedStrings.xml' 2>/dev/null | sha256sum | cut -d' ' -f1; }
+          URL="https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          git clone -q --depth 1 -b prices "$URL" old 2>/dev/null || true
+          if [ -s old/prices.xlsx ] && [ "$(sig new.xlsx)" = "$(sig old/prices.xlsx)" ]; then
+            echo "바뀐 시세가 없어요."; exit 0
+          fi
+          git init -q pub
+          cd pub
+          git remote add origin "$URL"
+          git switch -q --orphan prices
+          cp ../new.xlsx prices.xlsx
+          git add prices.xlsx
+          git -c user.name="github-actions[bot]" -c user.email="41898729+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "시세 자동 갱신 $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M')"
+          git push -q -f origin prices
+          echo "새 시세를 올렸어요."
